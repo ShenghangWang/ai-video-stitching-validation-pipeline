@@ -243,7 +243,10 @@ def validate_clip_files(clips: list[ClipConfig]) -> None:
 def write_concat_file(normalized_clips: list[NormalizedClip], path: str | Path) -> Path:
     concat_path = Path(path)
     concat_path.parent.mkdir(parents=True, exist_ok=True)
-    lines = [f"file '{_escape_concat_path(clip.output_path)}'" for clip in normalized_clips]
+    lines = [
+        f"file '{_escape_concat_path(str(Path(clip.output_path).resolve()))}'"
+        for clip in normalized_clips
+    ]
     concat_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
     return concat_path
 

@@ -63,16 +63,19 @@ def test_validate_clip_files_reports_missing_paths() -> None:
 
 
 def test_write_concat_file_uses_normalized_clip_paths(tmp_path) -> None:
+    first = tmp_path / "clip one.mp4"
+    second = tmp_path / "clip'two.mp4"
     clips = [
-        NormalizedClip("clip_001", "source.mp4", "/tmp/clip one.mp4", "log.txt", ["ffmpeg"]),
-        NormalizedClip("clip_002", "source.mp4", "/tmp/clip'two.mp4", "log.txt", ["ffmpeg"]),
+        NormalizedClip("clip_001", "source.mp4", str(first), "log.txt", ["ffmpeg"]),
+        NormalizedClip("clip_002", "source.mp4", str(second), "log.txt", ["ffmpeg"]),
     ]
 
     concat_path = write_concat_file(clips, tmp_path / "concat.txt")
+    escaped_second = str(second.resolve()).replace("'", "'\\''")
 
     assert concat_path.read_text(encoding="utf-8").splitlines() == [
-        "file '/tmp/clip one.mp4'",
-        "file '/tmp/clip'\\''two.mp4'",
+        f"file '{first.resolve()}'",
+        f"file '{escaped_second}'",
     ]
 
 
