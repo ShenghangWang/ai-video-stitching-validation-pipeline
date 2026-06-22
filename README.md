@@ -1,48 +1,64 @@
 # AI Video Stitching Validation Pipeline
 
-This repository contains the project specification, sample media, and Codex-executable build plan for a Dockerized backend video-stitching validation module.
+Dockerized Python worker for validating backend video stitching, ordered concatenation, shuffled clip reordering, and explicit timeline assembly for a future AI video production pipeline.
 
-The MVP goal is to prove a repeatable worker that can:
+## What It Does
 
-- normalize multiple clips into a consistent FFmpeg-compatible format
-- concatenate clips in a known order
-- infer the likely order of shuffled clips cut from the same source video
-- export a final MP4
-- write structured metadata for validation and debugging
-- run reproducibly in Docker
+- Loads JSON job configs through `python -m app.main`.
+- Probes clips with FFprobe and records duration, dimensions, FPS, codecs, and audio presence.
+- Normalizes clips with FFmpeg to MP4/H.264/AAC, `yuv420p`, configured resolution/FPS, 48000 Hz stereo audio.
+- Adds silent audio when an input clip has no audio.
+- Concatenates normalized clips with the FFmpeg concat demuxer.
+- Reorders shuffled clips using first/last boundary frame similarity.
+- Emits structured success/failure metadata for debugging and evaluation.
+- Runs as a Dockerized CLI worker.
 
 ## Repository Contents
 
 - `AI Video Stitching Pipeline Specification.pdf` - uploaded source specification
-- `docs/spec_integrity_review.md` - review of the specification and plan integrity
-- `docs/executable_build_plan.md` - improved Codex execution plan
+- `docs/executable_build_plan.md` - Codex execution plan
+- `docs/spec_integrity_review.md` - specification and plan review
+- `docs/acceptance_report.md` - final acceptance notes
 - `source_chinese_complete.mp4` - complete Chinese-language source video
 - `source_english_indoors_complete.mp4` - complete English-language indoor source video
 - `source_english_outdoors_complete.mp4` - complete English-language outdoor source video
 
-## Current Status
+## Status
 
-Execution 11 is complete. The repository now has the Python package skeleton, CLI entrypoint, JSON config validation, structured errors, metadata writing, example job configs, focused config tests, Docker runtime support, reusable FFmpeg/FFprobe dependency checks, FFprobe clip metadata extraction, FFmpeg normalization helpers, ordered concatenation wiring, a deterministic test clip generator, boundary frame extraction, visual transition similarity scoring, order solving, ground-truth evaluation, shuffled reorder stitching, and explicit timeline assembly.
+Execution 12 is complete. The MVP worker now includes the full planned implementation path:
 
-The next implementation step is Execution 12 in `docs/executable_build_plan.md`: acceptance and README pass.
+- ordered concatenation
+- shuffled reorder and concatenation
+- explicit timeline assembly
+- deterministic test clip generation
+- Docker runtime support
+- unit tests for all core modules
 
-## Intended Build Direction
-
-The worker should be implemented as a Python CLI first:
-
-```bash
-python -m app.main --config /app/input/job.json --workdir /app/tmp --verbose
-```
-
-Local unit validation:
+## Local Validation
 
 ```bash
 python -m pytest
 ```
 
-All example job files now exercise real processing paths and expect their clip paths to exist.
+## Docker
 
-Generate validation clips from a complete source video:
+Build the image:
+
+```bash
+docker build -t ai-video-stitcher .
+```
+
+Check runtime dependencies:
+
+```bash
+docker run --rm ai-video-stitcher python -m app.runtime
+docker run --rm ai-video-stitcher ffmpeg -version
+docker run --rm ai-video-stitcher ffprobe -version
+```
+
+## Generate Test Clips
+
+Generate fixed-length clips and matching ordered/shuffled job configs:
 
 ```bash
 python scripts/make_test_clips.py \
@@ -53,25 +69,86 @@ python scripts/make_test_clips.py \
   --seed 123
 ```
 
-Docker should be the primary runtime:
+Generated files include:
+
+- `input/generated_clips/ordered_job.json`
+- `input/generated_clips/shuffled_job.json`
+- `input/generated_clips/manifest.json`
+
+## Run Ordered Concatenation
 
 ```bash
-docker build -t ai-video-stitcher .
-docker run --rm ai-video-stitcher ffmpeg -version
-docker run --rm ai-video-stitcher ffprobe -version
+python -m app.main \
+  --config input/generated_clips/ordered_job.json \
+  --workdir tmp \
+  --verbose
+```
+
+Docker form:
+
+```bash
 docker run --rm \
-  -v "$(pwd)/input:/app/input" \
-  -v "$(pwd)/output:/app/output" \
+  -v "$(pwd):/workspace" \
+  -w /workspace \
   ai-video-stitcher \
-  python -m app.main --config /app/input/ordered_job.json --workdir /app/tmp --verbose
+  python -m app.main --config input/generated_clips/ordered_job.json --workdir tmp --verbose
 ```
 
-The image also supports a direct dependency check:
+## Run Shuffled Reordering
 
 ```bash
-docker run --rm ai-video-stitcher python -m app.runtime
+python -m app.main \
+  --config input/generated_clips/shuffled_job.json \
+  --workdir tmp \
+  --verbose
 ```
 
-## Notes
+The metadata includes:
 
-The source PDF has a few formatting artifacts where spaces are missing from shell commands. The reviewed and corrected commands are captured in the build plan and should be used during implementation.
+- `predicted_order`
+- `transition_scores`
+- `confidence_score`
+- `ordering_warnings`
+- `evaluation` when `ground_truth_order` is provided
+
+## Run Timeline Assembly
+
+Use `examples/timeline_job.json` as the shape reference, then replace clip paths with real files:
+
+```bash
+python -m app.main \
+  --config examples/timeline_job.json \
+  --workdir tmp \
+  --verbose
+```
+
+Timeline metadata preserves each clip role in `timeline_roles`.
+
+## Metadata
+
+Every successful job writes a metadata JSON file with:
+
+- `job_id`, `mode`, `status`, `stage`
+- input clip metadata
+- output video path
+- normalized clip paths and FFmpeg commands
+- concat file path and FFmpeg logs
+- processing time
+- warnings
+
+Failed jobs write structured error metadata whenever the metadata path can be determined.
+
+## Limitations
+
+- Shuffled ordering is an MVP visual-boundary heuristic, not semantic video understanding.
+- Repeated scenes, fades, hard cuts, or visually similar car angles can reduce ordering confidence.
+- The current transition mode is hard cut only.
+- No API server, job queue, cloud storage, authentication, subtitles, music, or AI narration generation is included.
+- Docker verification depends on network access to Docker Hub and Debian package mirrors.
+
+## Next Steps
+
+- Run generated clip jobs inside Docker against the included source videos.
+- Tune confidence thresholds after collecting real metadata from sample clips.
+- Add CI once repository secrets and runner preferences are decided.
+- Later extensions can add transitions, subtitles, voiceover overlay, object storage, and an API/queue layer.
