@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Runtime output
+tmp/
+output/
+input/generated_clips/
+*.log
+
+# Video processing intermediates
+*_normalized.mp4
+concat.txt
+frames/
+
+# OS/editor
+.DS_Store
+.idea/
+.vscode/
