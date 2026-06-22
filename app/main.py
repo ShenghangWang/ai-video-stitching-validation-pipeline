@@ -10,6 +10,7 @@ from pathlib import Path
 from app.config import JobConfig, load_config
 from app.errors import AppError, ConfigError
 from app.metadata import failure_metadata, success_metadata, write_metadata
+from app.video_probe import collect_available_clip_metadata
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -31,9 +32,11 @@ def main(argv: list[str] | None = None) -> int:
         Path(args.workdir).mkdir(parents=True, exist_ok=True)
 
         warnings = [
-            "Execution 1 validates configuration and writes metadata only; video processing starts in later executions."
+            "Execution 3 validates configuration and collects FFprobe metadata for available files; stitching starts in later executions."
         ]
-        metadata = success_metadata(job, started_at=started_at, warnings=warnings)
+        clip_metadata, probe_warnings = collect_available_clip_metadata(job.clips)
+        warnings.extend(probe_warnings)
+        metadata = success_metadata(job, started_at=started_at, warnings=warnings, clip_metadata=clip_metadata)
         write_metadata(job.output.metadata_path, metadata)
 
         if args.verbose:
@@ -64,4 +67,3 @@ def _handle_app_error(exc: AppError, *, job: JobConfig | None, started_at: float
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

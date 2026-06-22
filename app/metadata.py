@@ -17,14 +17,21 @@ def write_metadata(path: str | Path, payload: dict[str, Any]) -> None:
     metadata_path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
-def success_metadata(job: JobConfig, *, started_at: float, warnings: list[str] | None = None) -> dict[str, Any]:
+def success_metadata(
+    job: JobConfig,
+    *,
+    started_at: float,
+    warnings: list[str] | None = None,
+    clip_metadata: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
     ordered_clip_ids = _clip_ids_for_mode(job)
     payload: dict[str, Any] = {
         "job_id": job.job_id,
         "mode": job.mode,
         "status": "success",
-        "stage": "config_validated",
+        "stage": "clip_metadata_collected" if clip_metadata else "config_validated",
         "input_clip_count": len(job.clips),
+        "clip_metadata": clip_metadata or [],
         "clip_order": ordered_clip_ids,
         "output_video_path": job.output.video_path,
         "processing_time_seconds": round(time.perf_counter() - started_at, 4),
@@ -68,4 +75,3 @@ def _clip_ids_for_mode(job: JobConfig) -> list[str]:
     if job.mode in {"ordered_concat", "timeline_assembly"}:
         return [clip.clip_id for clip in sorted(job.clips, key=lambda clip: clip.order or 0)]
     return [clip.clip_id for clip in job.clips]
-
