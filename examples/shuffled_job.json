@@ -1,0 +1,40 @@
+{
+  "job_id": "shuffled_example_001",
+  "mode": "shuffled_reorder_concat",
+  "clips": [
+    {
+      "clip_id": "clip_c",
+      "path": "/app/input/clip_c.mp4"
+    },
+    {
+      "clip_id": "clip_a",
+      "path": "/app/input/clip_a.mp4"
+    },
+    {
+      "clip_id": "clip_d",
+      "path": "/app/input/clip_d.mp4"
+    },
+    {
+      "clip_id": "clip_b",
+      "path": "/app/input/clip_b.mp4"
+    }
+  ],
+  "ground_truth_order": [
+    "clip_a",
+    "clip_b",
+    "clip_c",
+    "clip_d"
+  ],
+  "output": {
+    "video_path": "output/final_reordered.mp4",
+    "metadata_path": "output/final_reordered_metadata.json"
+  },
+  "settings": {
+    "resolution": "1280x720",
+    "fps": 30,
+    "video_codec": "libx264",
+    "audio_codec": "aac",
+    "transition": "cut",
+    "ordering_method": "visual_boundary_similarity"
+  }
+}

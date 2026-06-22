@@ -16,11 +16,15 @@ The MVP goal is to prove a repeatable worker that can:
 - `AI Video Stitching Pipeline Specification.pdf` - uploaded source specification
 - `docs/spec_integrity_review.md` - review of the specification and plan integrity
 - `docs/executable_build_plan.md` - improved Codex execution plan
-- `Chinese.mp4`, `English_Indoors.mp4`, `English_Outdoors.mp4` - sample media assets for future validation work
+- `source_chinese_complete.mp4` - complete Chinese-language source video
+- `source_english_indoors_complete.mp4` - complete English-language indoor source video
+- `source_english_outdoors_complete.mp4` - complete English-language outdoor source video
 
 ## Current Status
 
-This is the planning and repository-bootstrap state. The implementation should proceed through the execution plan in `docs/executable_build_plan.md`.
+Execution 1 is complete. The repository now has the Python package skeleton, CLI entrypoint, JSON config validation, structured errors, metadata writing, example job configs, and focused config tests.
+
+The next implementation step is Execution 2 in `docs/executable_build_plan.md`: Docker runtime support.
 
 ## Intended Build Direction
 
@@ -28,6 +32,13 @@ The worker should be implemented as a Python CLI first:
 
 ```bash
 python -m app.main --config /app/input/job.json --workdir /app/tmp --verbose
+```
+
+Local validation currently works with the example jobs:
+
+```bash
+python -m pytest
+python -m app.main --config examples/ordered_job.json --workdir tmp --verbose
 ```
 
 Docker should be the primary runtime:

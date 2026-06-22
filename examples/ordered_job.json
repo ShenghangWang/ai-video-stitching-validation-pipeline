@@ -1,0 +1,32 @@
+{
+  "job_id": "ordered_example_001",
+  "mode": "ordered_concat",
+  "clips": [
+    {
+      "clip_id": "clip_001",
+      "path": "/app/input/clip_001.mp4",
+      "order": 1
+    },
+    {
+      "clip_id": "clip_002",
+      "path": "/app/input/clip_002.mp4",
+      "order": 2
+    },
+    {
+      "clip_id": "clip_003",
+      "path": "/app/input/clip_003.mp4",
+      "order": 3
+    }
+  ],
+  "output": {
+    "video_path": "output/final_ordered.mp4",
+    "metadata_path": "output/final_ordered_metadata.json"
+  },
+  "settings": {
+    "resolution": "1280x720",
+    "fps": 30,
+    "video_codec": "libx264",
+    "audio_codec": "aac",
+    "transition": "cut"
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "job_id": "timeline_example_001",
+  "mode": "timeline_assembly",
+  "clips": [
+    {
+      "clip_id": "ai_intro",
+      "path": "/app/input/ai_intro.mp4",
+      "role": "ai_generated_intro",
+      "order": 1
+    },
+    {
+      "clip_id": "user_walkaround",
+      "path": "/app/input/user_walkaround.mp4",
+      "role": "user_uploaded_car_footage",
+      "order": 2
+    },
+    {
+      "clip_id": "ai_selling_points",
+      "path": "/app/input/ai_selling_points.mp4",
+      "role": "ai_generated_narration",
+      "order": 3
+    }
+  ],
+  "output": {
+    "video_path": "output/final_car_sales_video.mp4",
+    "metadata_path": "output/final_car_sales_video_metadata.json"
+  },
+  "settings": {
+    "resolution": "1280x720",
+    "fps": 30,
+    "transition": "cut"
+  }
+}
