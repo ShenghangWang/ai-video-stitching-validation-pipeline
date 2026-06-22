@@ -23,13 +23,15 @@ def success_metadata(
     started_at: float,
     warnings: list[str] | None = None,
     clip_metadata: list[dict[str, Any]] | None = None,
+    stage: str | None = None,
+    extra: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     ordered_clip_ids = _clip_ids_for_mode(job)
     payload: dict[str, Any] = {
         "job_id": job.job_id,
         "mode": job.mode,
         "status": "success",
-        "stage": "clip_metadata_collected" if clip_metadata else "config_validated",
+        "stage": stage or ("clip_metadata_collected" if clip_metadata else "config_validated"),
         "input_clip_count": len(job.clips),
         "clip_metadata": clip_metadata or [],
         "clip_order": ordered_clip_ids,
@@ -43,6 +45,8 @@ def success_metadata(
         payload["predicted_order"] = None
         payload["transition_scores"] = []
         payload["confidence_score"] = None
+    if extra:
+        payload.update(extra)
     return payload
 
 

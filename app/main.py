@@ -10,6 +10,7 @@ from pathlib import Path
 from app.config import JobConfig, load_config
 from app.errors import AppError, ConfigError
 from app.metadata import failure_metadata, success_metadata, write_metadata
+from app.stitcher import process_ordered_concat
 from app.video_probe import collect_available_clip_metadata
 
 
@@ -31,8 +32,32 @@ def main(argv: list[str] | None = None) -> int:
         job = load_config(args.config)
         Path(args.workdir).mkdir(parents=True, exist_ok=True)
 
+        if job.mode == "ordered_concat":
+            result = process_ordered_concat(job, args.workdir)
+            metadata = success_metadata(
+                job,
+                started_at=started_at,
+                warnings=[],
+                clip_metadata=[clip.to_metadata() for clip in result.clip_metadata],
+                stage="video_stitched",
+                extra={
+                    "clip_order": result.clip_order,
+                    "normalized_clips": [clip.to_metadata() for clip in result.normalized_clips],
+                    "concat_file_path": result.concat_file_path,
+                    "concat_ffmpeg": result.ffmpeg_result.to_metadata(),
+                    "output_video_path": result.output_video_path,
+                },
+            )
+            write_metadata(job.output.metadata_path, metadata)
+
+            if args.verbose:
+                print(f"Processed ordered job {job.job_id!r}.")
+                print(f"Wrote video to {job.output.video_path}.")
+                print(f"Wrote metadata to {job.output.metadata_path}.")
+            return 0
+
         warnings = [
-            "Execution 3 validates configuration and collects FFprobe metadata for available files; stitching starts in later executions."
+            "This mode is validated only; video processing is scheduled for a later execution."
         ]
         clip_metadata, probe_warnings = collect_available_clip_metadata(job.clips)
         warnings.extend(probe_warnings)

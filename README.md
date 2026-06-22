@@ -22,9 +22,9 @@ The MVP goal is to prove a repeatable worker that can:
 
 ## Current Status
 
-Execution 4 is complete. The repository now has the Python package skeleton, CLI entrypoint, JSON config validation, structured errors, metadata writing, example job configs, focused config tests, Docker runtime support, reusable FFmpeg/FFprobe dependency checks, FFprobe clip metadata extraction, and FFmpeg normalization helpers.
+Execution 5 is complete. The repository now has the Python package skeleton, CLI entrypoint, JSON config validation, structured errors, metadata writing, example job configs, focused config tests, Docker runtime support, reusable FFmpeg/FFprobe dependency checks, FFprobe clip metadata extraction, FFmpeg normalization helpers, and ordered concatenation wiring.
 
-The next implementation step is Execution 5 in `docs/executable_build_plan.md`: ordered concatenation.
+The next implementation step is Execution 6 in `docs/executable_build_plan.md`: test clip generation.
 
 ## Intended Build Direction
 
@@ -38,8 +38,10 @@ Local validation currently works with the example jobs:
 
 ```bash
 python -m pytest
-python -m app.main --config examples/ordered_job.json --workdir tmp --verbose
+python -m app.main --config examples/shuffled_job.json --workdir tmp --verbose
 ```
+
+`examples/ordered_job.json` now exercises the real ordered processing path and expects its clip paths to exist.
 
 Docker should be the primary runtime:
 
