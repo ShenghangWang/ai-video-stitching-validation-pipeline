@@ -22,9 +22,9 @@ The MVP goal is to prove a repeatable worker that can:
 
 ## Current Status
 
-Execution 6 is complete. The repository now has the Python package skeleton, CLI entrypoint, JSON config validation, structured errors, metadata writing, example job configs, focused config tests, Docker runtime support, reusable FFmpeg/FFprobe dependency checks, FFprobe clip metadata extraction, FFmpeg normalization helpers, ordered concatenation wiring, and a deterministic test clip generator.
+Execution 7 is complete. The repository now has the Python package skeleton, CLI entrypoint, JSON config validation, structured errors, metadata writing, example job configs, focused config tests, Docker runtime support, reusable FFmpeg/FFprobe dependency checks, FFprobe clip metadata extraction, FFmpeg normalization helpers, ordered concatenation wiring, a deterministic test clip generator, and boundary frame extraction.
 
-The next implementation step is Execution 7 in `docs/executable_build_plan.md`: boundary frame extraction.
+The next implementation step is Execution 8 in `docs/executable_build_plan.md`: visual similarity scoring.
 
 ## Intended Build Direction
 
