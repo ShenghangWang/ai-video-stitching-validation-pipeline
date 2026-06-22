@@ -75,6 +75,28 @@ class ShuffledConcatResult:
         return payload
 
 
+@dataclass(frozen=True)
+class TimelineAssemblyResult:
+    clip_order: list[str]
+    timeline_roles: list[dict[str, Any]]
+    clip_metadata: list[ClipMetadata]
+    normalized_clips: list[NormalizedClip]
+    concat_file_path: str
+    output_video_path: str
+    ffmpeg_result: FFmpegResult
+
+    def to_metadata(self) -> dict[str, Any]:
+        return {
+            "clip_order": self.clip_order,
+            "timeline_roles": self.timeline_roles,
+            "clip_metadata": [clip.to_metadata() for clip in self.clip_metadata],
+            "normalized_clips": [clip.to_metadata() for clip in self.normalized_clips],
+            "concat_file_path": self.concat_file_path,
+            "output_video_path": self.output_video_path,
+            "concat_ffmpeg": self.ffmpeg_result.to_metadata(),
+        }
+
+
 def process_ordered_concat(job: JobConfig, workdir: str | Path, *, ffmpeg_binary: str = "ffmpeg") -> OrderedConcatResult:
     ordered_clips = ordered_job_clips(job)
     validate_clip_files(ordered_clips)
@@ -98,6 +120,43 @@ def process_ordered_concat(job: JobConfig, workdir: str | Path, *, ffmpeg_binary
 
     return OrderedConcatResult(
         clip_order=[clip.clip_id for clip in ordered_clips],
+        clip_metadata=clip_metadata,
+        normalized_clips=normalized_clips,
+        concat_file_path=str(concat_file_path),
+        output_video_path=job.output.video_path,
+        ffmpeg_result=ffmpeg_result,
+    )
+
+
+def process_timeline_assembly(
+    job: JobConfig, workdir: str | Path, *, ffmpeg_binary: str = "ffmpeg"
+) -> TimelineAssemblyResult:
+    ordered_clips = ordered_job_clips(job)
+    validate_clip_files(ordered_clips)
+
+    clip_metadata = probe_clips(ordered_clips)
+    metadata_by_clip_id = {metadata.clip_id: metadata for metadata in clip_metadata}
+    normalized_clips = normalize_clips(
+        ordered_clips,
+        metadata_by_clip_id,
+        job.settings,
+        workdir,
+        ffmpeg_binary=ffmpeg_binary,
+    )
+    concat_file_path = write_concat_file(normalized_clips, Path(workdir) / "concat.txt")
+    ffmpeg_result = concatenate_normalized_clips(
+        concat_file_path,
+        job.output.video_path,
+        workdir,
+        ffmpeg_binary=ffmpeg_binary,
+    )
+
+    return TimelineAssemblyResult(
+        clip_order=[clip.clip_id for clip in ordered_clips],
+        timeline_roles=[
+            {"clip_id": clip.clip_id, "role": clip.role, "order": clip.order}
+            for clip in ordered_clips
+        ],
         clip_metadata=clip_metadata,
         normalized_clips=normalized_clips,
         concat_file_path=str(concat_file_path),

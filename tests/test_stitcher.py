@@ -14,6 +14,7 @@ from app.stitcher import (
     ordered_job_clips,
     process_ordered_concat,
     process_shuffled_reorder_concat,
+    process_timeline_assembly,
     validate_clip_files,
     write_concat_file,
 )
@@ -191,3 +192,38 @@ def test_process_shuffled_reorder_concat_solves_and_concatenates(tmp_path) -> No
         "adjacency_accuracy": 1.0,
     }
     assert normalize.call_args.args[0][0].clip_id == "clip_a"
+
+
+def test_process_timeline_assembly_preserves_roles(tmp_path) -> None:
+    intro = tmp_path / "intro.mp4"
+    walkaround = tmp_path / "walkaround.mp4"
+    intro.write_bytes(b"intro")
+    walkaround.write_bytes(b"walkaround")
+    clips = [
+        ClipConfig(clip_id="walkaround", path=str(walkaround), order=2, role="user_uploaded_car_footage"),
+        ClipConfig(clip_id="intro", path=str(intro), order=1, role="ai_generated_intro"),
+    ]
+    job = JobConfig(
+        job_id="timeline_test",
+        mode="timeline_assembly",
+        clips=clips,
+        output=OutputConfig(video_path=str(tmp_path / "final.mp4"), metadata_path="metadata.json"),
+        settings={"resolution": "1280x720", "fps": 30, "video_codec": "libx264", "audio_codec": "aac"},
+    )
+    probed = [clip_metadata("intro", str(intro)), clip_metadata("walkaround", str(walkaround))]
+    normalized = [
+        NormalizedClip("intro", str(intro), str(tmp_path / "intro_normalized.mp4"), "intro.log", ["ffmpeg"]),
+        NormalizedClip("walkaround", str(walkaround), str(tmp_path / "walkaround_normalized.mp4"), "walk.log", ["ffmpeg"]),
+    ]
+    ffmpeg_result = FFmpegResult(["ffmpeg"], 0, "", "", str(tmp_path / "logs" / "concat_ffmpeg.log"))
+
+    with patch("app.stitcher.probe_clips", return_value=probed), patch(
+        "app.stitcher.normalize_clips", return_value=normalized
+    ), patch("app.stitcher.run_ffmpeg", return_value=ffmpeg_result):
+        result = process_timeline_assembly(job, tmp_path)
+
+    assert result.clip_order == ["intro", "walkaround"]
+    assert result.timeline_roles == [
+        {"clip_id": "intro", "role": "ai_generated_intro", "order": 1},
+        {"clip_id": "walkaround", "role": "user_uploaded_car_footage", "order": 2},
+    ]

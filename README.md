@@ -22,9 +22,9 @@ The MVP goal is to prove a repeatable worker that can:
 
 ## Current Status
 
-Execution 10 is complete. The repository now has the Python package skeleton, CLI entrypoint, JSON config validation, structured errors, metadata writing, example job configs, focused config tests, Docker runtime support, reusable FFmpeg/FFprobe dependency checks, FFprobe clip metadata extraction, FFmpeg normalization helpers, ordered concatenation wiring, a deterministic test clip generator, boundary frame extraction, visual transition similarity scoring, order solving, ground-truth evaluation, and shuffled reorder stitching.
+Execution 11 is complete. The repository now has the Python package skeleton, CLI entrypoint, JSON config validation, structured errors, metadata writing, example job configs, focused config tests, Docker runtime support, reusable FFmpeg/FFprobe dependency checks, FFprobe clip metadata extraction, FFmpeg normalization helpers, ordered concatenation wiring, a deterministic test clip generator, boundary frame extraction, visual transition similarity scoring, order solving, ground-truth evaluation, shuffled reorder stitching, and explicit timeline assembly.
 
-The next implementation step is Execution 11 in `docs/executable_build_plan.md`: optional timeline assembly.
+The next implementation step is Execution 12 in `docs/executable_build_plan.md`: acceptance and README pass.
 
 ## Intended Build Direction
 
@@ -34,14 +34,13 @@ The worker should be implemented as a Python CLI first:
 python -m app.main --config /app/input/job.json --workdir /app/tmp --verbose
 ```
 
-Local validation currently works with the timeline example:
+Local unit validation:
 
 ```bash
 python -m pytest
-python -m app.main --config examples/timeline_job.json --workdir tmp --verbose
 ```
 
-`examples/ordered_job.json` and `examples/shuffled_job.json` now exercise real processing paths and expect their clip paths to exist.
+All example job files now exercise real processing paths and expect their clip paths to exist.
 
 Generate validation clips from a complete source video:
 

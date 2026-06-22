@@ -10,7 +10,7 @@ from pathlib import Path
 from app.config import JobConfig, load_config
 from app.errors import AppError, ConfigError
 from app.metadata import failure_metadata, success_metadata, write_metadata
-from app.stitcher import process_ordered_concat, process_shuffled_reorder_concat
+from app.stitcher import process_ordered_concat, process_shuffled_reorder_concat, process_timeline_assembly
 from app.video_probe import collect_available_clip_metadata
 
 
@@ -71,6 +71,24 @@ def main(argv: list[str] | None = None) -> int:
             if args.verbose:
                 print(f"Processed shuffled job {job.job_id!r}.")
                 print(f"Predicted order: {', '.join(result.predicted_order)}.")
+                print(f"Wrote video to {job.output.video_path}.")
+                print(f"Wrote metadata to {job.output.metadata_path}.")
+            return 0
+
+        if job.mode == "timeline_assembly":
+            result = process_timeline_assembly(job, args.workdir)
+            metadata = success_metadata(
+                job,
+                started_at=started_at,
+                warnings=[],
+                clip_metadata=[clip.to_metadata() for clip in result.clip_metadata],
+                stage="video_stitched",
+                extra=result.to_metadata(),
+            )
+            write_metadata(job.output.metadata_path, metadata)
+
+            if args.verbose:
+                print(f"Processed timeline job {job.job_id!r}.")
                 print(f"Wrote video to {job.output.video_path}.")
                 print(f"Wrote metadata to {job.output.metadata_path}.")
             return 0

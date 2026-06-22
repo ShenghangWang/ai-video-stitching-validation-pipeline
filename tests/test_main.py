@@ -7,7 +7,7 @@ from app.ffmpeg_utils import FFmpegResult
 from app.main import main
 from app.normalizer import NormalizedClip
 from app.stitcher import OrderedConcatResult
-from app.stitcher import ShuffledConcatResult
+from app.stitcher import ShuffledConcatResult, TimelineAssemblyResult
 from app.order_solver import OrderSolution
 from app.video_probe import ClipMetadata
 
@@ -120,3 +120,46 @@ def test_main_processes_shuffled_reorder_concat_and_writes_metadata(tmp_path) ->
     assert metadata["predicted_order"] == ["clip_001"]
     assert metadata["confidence_score"] == 1.0
     assert metadata["evaluation"]["exact_order_match"] is True
+
+
+def test_main_processes_timeline_assembly_and_writes_role_metadata(tmp_path) -> None:
+    config_path = tmp_path / "job.json"
+    metadata_path = tmp_path / "metadata.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "job_id": "timeline_test",
+                "mode": "timeline_assembly",
+                "clips": [
+                    {
+                        "clip_id": "intro",
+                        "path": str(tmp_path / "intro.mp4"),
+                        "role": "ai_generated_intro",
+                        "order": 1,
+                    }
+                ],
+                "output": {
+                    "video_path": str(tmp_path / "final.mp4"),
+                    "metadata_path": str(metadata_path),
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    result = TimelineAssemblyResult(
+        clip_order=["intro"],
+        timeline_roles=[{"clip_id": "intro", "role": "ai_generated_intro", "order": 1}],
+        clip_metadata=[],
+        normalized_clips=[],
+        concat_file_path=str(tmp_path / "concat.txt"),
+        output_video_path=str(tmp_path / "final.mp4"),
+        ffmpeg_result=FFmpegResult(["ffmpeg"], 0, "", "", str(tmp_path / "logs" / "concat.log")),
+    )
+
+    with patch("app.main.process_timeline_assembly", return_value=result):
+        exit_code = main(["--config", str(config_path), "--workdir", str(tmp_path)])
+
+    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    assert exit_code == 0
+    assert metadata["stage"] == "video_stitched"
+    assert metadata["timeline_roles"] == [{"clip_id": "intro", "role": "ai_generated_intro", "order": 1}]
