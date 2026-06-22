@@ -22,9 +22,9 @@ The MVP goal is to prove a repeatable worker that can:
 
 ## Current Status
 
-Execution 1 is complete. The repository now has the Python package skeleton, CLI entrypoint, JSON config validation, structured errors, metadata writing, example job configs, and focused config tests.
+Execution 2 implementation is in place. The repository now has the Python package skeleton, CLI entrypoint, JSON config validation, structured errors, metadata writing, example job configs, focused config tests, Docker runtime support, and reusable FFmpeg/FFprobe dependency checks.
 
-The next implementation step is Execution 2 in `docs/executable_build_plan.md`: Docker runtime support.
+The next implementation step is Execution 3 in `docs/executable_build_plan.md`: FFprobe clip metadata extraction.
 
 ## Intended Build Direction
 
@@ -45,11 +45,19 @@ Docker should be the primary runtime:
 
 ```bash
 docker build -t ai-video-stitcher .
+docker run --rm ai-video-stitcher ffmpeg -version
+docker run --rm ai-video-stitcher ffprobe -version
 docker run --rm \
   -v "$(pwd)/input:/app/input" \
   -v "$(pwd)/output:/app/output" \
   ai-video-stitcher \
   python -m app.main --config /app/input/ordered_job.json --workdir /app/tmp --verbose
+```
+
+The image also supports a direct dependency check:
+
+```bash
+docker run --rm ai-video-stitcher python -m app.runtime
 ```
 
 ## Notes
