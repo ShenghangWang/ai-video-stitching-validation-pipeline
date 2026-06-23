@@ -24,11 +24,11 @@ export function buildEditorProject({ assets, timeline, audioTracks }) {
       duration: roundTime(Math.max(0, item.end - item.start)),
       muted: item.muted,
       transform: {
-        x: 0,
-        y: 0,
-        scale: 1,
-        rotation: 0,
-        opacity: 1,
+        x: Number(item.transform?.x ?? 0),
+        y: Number(item.transform?.y ?? 0),
+        scale: Number(item.transform?.scale ?? 1),
+        rotation: Number(item.transform?.rotation ?? 0),
+        opacity: Number(item.transform?.opacity ?? 1),
       },
     })),
   };

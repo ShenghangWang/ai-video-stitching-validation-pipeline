@@ -18,7 +18,8 @@
         <div class="toolbar" aria-label="Editor actions">
           <button id="projectButton" class="button ghost utility-action">Project JSON</button>
           <button id="jobButton" class="button ghost utility-action">Job JSON</button>
-          <button class="button ghost" type="button">Sync cloud</button>
+          <button id="saveButton" class="button ghost" type="button">Save local</button>
+          <button id="loadButton" class="button ghost" type="button">Load local</button>
           <button id="exportButton" class="button primary">Export</button>
         </div>
       </header>
@@ -51,11 +52,12 @@
             <h2>Local media</h2>
             <span id="mediaCount">0</span>
           </div>
+          <input id="mediaSearch" class="media-search" type="search" placeholder="Search media" aria-label="Search media">
           <div class="media-tabs" aria-label="Media filters">
-            <button class="media-tab active" type="button">All</button>
-            <button class="media-tab" type="button">Video</button>
-            <button class="media-tab" type="button">Audio</button>
-            <button class="media-tab" type="button">Image</button>
+            <button class="media-tab active" type="button" data-filter="all">All</button>
+            <button class="media-tab" type="button" data-filter="video">Video</button>
+            <button class="media-tab" type="button" data-filter="audio">Audio</button>
+            <button class="media-tab" type="button" data-filter="image">Image</button>
           </div>
           <label class="import-drop">
             <span>Import</span>
@@ -103,21 +105,25 @@
                 </label>
                 <label>
                   Scale
-                  <input type="range" min="0.1" max="2" step="0.01" value="1">
+                  <input id="clipScale" type="range" min="0.1" max="2" step="0.01" value="1">
                 </label>
                 <div class="xy-grid">
                   <label>
                     X
-                    <input type="number" value="0">
+                    <input id="clipX" type="number" value="0">
                   </label>
                   <label>
                     Y
-                    <input type="number" value="0">
+                    <input id="clipY" type="number" value="0">
                   </label>
                 </div>
                 <label>
                   Rotation
-                  <input type="range" min="-180" max="180" value="0">
+                  <input id="clipRotation" type="range" min="-180" max="180" value="0">
+                </label>
+                <label>
+                  Opacity
+                  <input id="clipOpacity" type="range" min="0" max="1" step="0.01" value="1">
                 </label>
                 <div class="mirror-row">
                   <button type="button">Flip H</button>
@@ -158,14 +164,14 @@
           <section class="timeline-panel" aria-label="Timeline">
             <div class="timeline-toolbar">
               <div class="tool-buttons">
-                <button type="button" title="Select">⌁</button>
-                <button type="button" title="Split">⌘</button>
-                <button type="button" title="Link">∞</button>
-                <button type="button" title="Duplicate">▢</button>
-                <button type="button" title="Delete">⌫</button>
+                <button id="selectToolButton" type="button" title="Select">⌁</button>
+                <button id="splitButton" type="button" title="Split at playhead">⌘</button>
+                <button id="linkButton" type="button" title="Link selection">∞</button>
+                <button id="timelineDuplicateButton" type="button" title="Duplicate">▢</button>
+                <button id="timelineDeleteButton" type="button" title="Delete">⌫</button>
                 <span class="tool-divider" aria-hidden="true"></span>
-                <button type="button" title="Undo">↶</button>
-                <button type="button" title="Redo">↷</button>
+                <button id="undoButton" type="button" title="Undo">↶</button>
+                <button id="redoButton" type="button" title="Redo">↷</button>
               </div>
               <div class="timeline-zoom">
                 <span id="durationReadout">00:00</span>

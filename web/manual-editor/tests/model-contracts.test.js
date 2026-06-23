@@ -45,6 +45,13 @@ const timeline = [
     start: 1,
     end: 7,
     muted: true,
+    transform: {
+      x: 12,
+      y: -8,
+      scale: 1.25,
+      rotation: 5,
+      opacity: 0.8,
+    },
   },
 ];
 
@@ -87,6 +94,7 @@ const project = buildEditorProject({ assets, timeline, audioTracks });
 assert.equal(project.schema, "browser-video-editor-project");
 assert.equal(project.assets.length, 3);
 assert.equal(project.timeline.videoTracks[0].clips[0].muted, true);
+assert.equal(project.timeline.videoTracks[0].clips[0].transform.scale, 1.25);
 assert.equal(project.timeline.audioTracks.length, 2);
 assert.equal(project.timeline.duration, 9);
 
@@ -97,6 +105,7 @@ assert.equal(ir.schema, "renderer-timeline-ir");
 assert.equal(ir.tracks.length, 3);
 assert.equal(ir.duration, 9);
 assert.equal(ir.assets.video_asset.objectUrl, "blob:video");
+assert.equal(ir.tracks[0].clips[0].transform.rotation, 5);
 
 const { job, warnings: jobWarnings } = buildPipelineJob({ assets, timeline, audioTracks });
 assert.equal(job.mode, "timeline_assembly");

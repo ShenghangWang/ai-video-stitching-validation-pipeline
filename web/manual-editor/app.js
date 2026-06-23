@@ -3,6 +3,16 @@ import { buildEditorProject } from "./model/project.js";
 import { buildRendererTimeline } from "./model/timeline-ir.js";
 import { MediaRecorderRenderer } from "./renderers/media-recorder-renderer.js";
 
+const TRACK_PIXEL_WIDTH = 1900;
+const PROJECT_STORE = "manual-editor-project";
+const DEFAULT_TRANSFORM = Object.freeze({
+  x: 0,
+  y: 0,
+  scale: 1,
+  rotation: 0,
+  opacity: 1,
+});
+
 const state = {
   assets: [],
   timeline: [],
@@ -12,19 +22,28 @@ const state = {
   },
   selectedItemId: null,
   activeItemId: null,
+  cursorSeconds: 0,
   playToken: 0,
   isPlaying: false,
   audioPreviewTimers: [],
   audioPreviewElements: [],
+  mediaFilter: "all",
+  mediaSearch: "",
+  history: [],
+  future: [],
+  restoringHistory: false,
 };
 
 const els = {
   fileInput: document.getElementById("fileInput"),
+  mediaSearch: document.getElementById("mediaSearch"),
+  mediaTabs: Array.from(document.querySelectorAll(".media-tab")),
   mediaList: document.getElementById("mediaList"),
   mediaCount: document.getElementById("mediaCount"),
   timelineList: document.getElementById("timelineList"),
   timelineRuler: document.getElementById("timelineRuler"),
   audioTimelineList: document.getElementById("audioTimelineList"),
+  trackArea: document.querySelector(".track-area"),
   durationReadout: document.getElementById("durationReadout"),
   previewVideo: document.getElementById("previewVideo"),
   emptyPreview: document.getElementById("emptyPreview"),
@@ -35,6 +54,14 @@ const els = {
   exportButton: document.getElementById("exportButton"),
   projectButton: document.getElementById("projectButton"),
   jobButton: document.getElementById("jobButton"),
+  saveButton: document.getElementById("saveButton"),
+  loadButton: document.getElementById("loadButton"),
+  undoButton: document.getElementById("undoButton"),
+  redoButton: document.getElementById("redoButton"),
+  splitButton: document.getElementById("splitButton"),
+  linkButton: document.getElementById("linkButton"),
+  timelineDuplicateButton: document.getElementById("timelineDuplicateButton"),
+  timelineDeleteButton: document.getElementById("timelineDeleteButton"),
   inspectorTabs: document.querySelector(".inspector-tabs"),
   inspectorEmpty: document.getElementById("inspectorEmpty"),
   clipForm: document.getElementById("clipForm"),
@@ -44,6 +71,11 @@ const els = {
   clipStart: document.getElementById("clipStart"),
   clipEnd: document.getElementById("clipEnd"),
   clipMuted: document.getElementById("clipMuted"),
+  clipScale: document.getElementById("clipScale"),
+  clipX: document.getElementById("clipX"),
+  clipY: document.getElementById("clipY"),
+  clipRotation: document.getElementById("clipRotation"),
+  clipOpacity: document.getElementById("clipOpacity"),
   narrationVolume: document.getElementById("narrationVolume"),
   musicVolume: document.getElementById("musicVolume"),
   duplicateButton: document.getElementById("duplicateButton"),
@@ -77,7 +109,7 @@ els.playButton.addEventListener("click", () => {
 });
 
 els.seekSlider.addEventListener("input", () => {
-  const total = timelineDuration();
+  const total = projectDuration();
   const seconds = (Number(els.seekSlider.value) / 1000) * total;
   seekPreview(seconds);
 });
@@ -85,12 +117,48 @@ els.seekSlider.addEventListener("input", () => {
 els.exportButton.addEventListener("click", exportWebM);
 els.projectButton.addEventListener("click", downloadProjectJson);
 els.jobButton.addEventListener("click", downloadBackendJobJson);
+els.saveButton.addEventListener("click", saveLocalProject);
+els.loadButton.addEventListener("click", loadLocalProject);
+els.undoButton.addEventListener("click", undoEdit);
+els.redoButton.addEventListener("click", redoEdit);
+els.splitButton.addEventListener("click", splitAtCursor);
+els.linkButton.addEventListener("click", () => setStatus("Linking is not needed for the single video track yet"));
+els.timelineDuplicateButton.addEventListener("click", duplicateSelectedItem);
+els.timelineDeleteButton.addEventListener("click", deleteSelectedItem);
 els.duplicateButton.addEventListener("click", duplicateSelectedItem);
 els.deleteButton.addEventListener("click", deleteSelectedItem);
 els.narrationVolume.addEventListener("input", () => updateTrackVolume("narration", els.narrationVolume.value));
 els.musicVolume.addEventListener("input", () => updateTrackVolume("music", els.musicVolume.value));
 
-for (const input of [els.clipName, els.clipRole, els.clipStart, els.clipEnd, els.clipMuted]) {
+els.mediaSearch.addEventListener("input", () => {
+  state.mediaSearch = els.mediaSearch.value.trim().toLowerCase();
+  renderMedia();
+});
+
+for (const tab of els.mediaTabs) {
+  tab.addEventListener("click", () => {
+    state.mediaFilter = tab.dataset.filter || "all";
+    renderMedia();
+  });
+}
+
+els.trackArea.addEventListener("click", (event) => {
+  if (event.target.closest(".timeline-item, .audio-clip-pill, button")) return;
+  seekPreview(secondsFromTrackPoint(event.clientX));
+});
+
+for (const input of [
+  els.clipName,
+  els.clipRole,
+  els.clipStart,
+  els.clipEnd,
+  els.clipMuted,
+  els.clipScale,
+  els.clipX,
+  els.clipY,
+  els.clipRotation,
+  els.clipOpacity,
+]) {
   input.addEventListener("input", updateSelectedFromForm);
 }
 
@@ -159,6 +227,7 @@ function addAssetToTimeline(asset) {
     start: 0,
     end: roundTime(asset.duration),
     muted: false,
+    transform: { ...DEFAULT_TRANSFORM },
   });
 }
 
@@ -182,7 +251,7 @@ function render() {
   renderTimeline();
   renderAudioTimeline();
   renderInspector();
-  renderTransport();
+  renderTransport(state.cursorSeconds);
   els.emptyPreview.classList.toggle("hidden", state.timeline.length > 0);
 }
 
@@ -201,7 +270,15 @@ function renderRuler() {
 function renderMedia() {
   els.mediaCount.textContent = String(state.assets.length);
   els.mediaList.innerHTML = "";
-  for (const asset of state.assets) {
+  for (const tab of els.mediaTabs) {
+    tab.classList.toggle("active", (tab.dataset.filter || "all") === state.mediaFilter);
+  }
+  const filteredAssets = state.assets.filter((asset) => {
+    const matchesKind = state.mediaFilter === "all" || asset.kind === state.mediaFilter;
+    const matchesSearch = !state.mediaSearch || asset.name.toLowerCase().includes(state.mediaSearch);
+    return matchesKind && matchesSearch;
+  });
+  for (const asset of filteredAssets) {
     const row = document.createElement("article");
     row.className = "media-item";
     row.innerHTML = `
@@ -215,6 +292,7 @@ function renderMedia() {
     if (asset.kind === "video") {
       const addButton = makeMiniButton("+", `Add ${asset.name}`);
       addButton.addEventListener("click", () => {
+        pushHistory();
         addAssetToTimeline(asset);
         state.selectedItemId = state.timeline[state.timeline.length - 1].id;
         render();
@@ -224,6 +302,7 @@ function renderMedia() {
       for (const [label, trackKey] of [["Narr", "narration"], ["Music", "music"]]) {
         const addButton = makeMiniButton(label, `Add ${asset.name} to ${trackKey}`);
         addButton.addEventListener("click", () => {
+          pushHistory();
           addAudioAssetToTrack(asset, trackKey);
           render();
         });
@@ -237,6 +316,7 @@ function renderMedia() {
 function renderTimeline() {
   els.timelineList.innerHTML = "";
   els.durationReadout.textContent = formatTime(projectDuration());
+  setPlayheadPosition();
 
   if (!state.timeline.length) {
     const empty = document.createElement("div");
@@ -248,12 +328,15 @@ function renderTimeline() {
 
   state.timeline.forEach((item, index) => {
     const asset = assetForItem(item);
+    const duration = Math.max(0, item.end - item.start);
+    const width = Math.max(150, Math.min(TRACK_PIXEL_WIDTH, (duration / Math.max(projectDuration(), 20)) * TRACK_PIXEL_WIDTH));
     const card = document.createElement("article");
     card.className = [
       "timeline-item",
       item.id === state.selectedItemId ? "selected" : "",
       item.id === state.activeItemId ? "active" : "",
     ].join(" ");
+    card.style.flexBasis = `${width}px`;
     card.draggable = true;
     card.innerHTML = `
       <div>
@@ -292,13 +375,15 @@ function renderTimeline() {
 
 function renderAudioTimeline() {
   els.audioTimelineList.innerHTML = "";
+  const total = Math.max(projectDuration(), 20);
   for (const [trackKey, track] of Object.entries(state.audioTracks)) {
     const row = document.createElement("div");
     row.className = "audio-track-row";
     const clips = track.clips.map((clip) => {
       const asset = state.assets.find((candidate) => candidate.id === clip.assetId);
-      const width = Math.max(160, Math.min(900, clip.duration * 42));
-      return `<div class="audio-clip-pill" style="flex-basis:${width}px" title="${escapeHtml(asset?.name || clip.name)}">${escapeHtml(trackKey)} · ${escapeHtml(asset?.name || clip.name)} · ${formatTime(clip.duration)}</div>`;
+      const left = (clip.timelineStart / total) * TRACK_PIXEL_WIDTH;
+      const width = Math.max(160, Math.min(TRACK_PIXEL_WIDTH, (clip.duration / total) * TRACK_PIXEL_WIDTH));
+      return `<div class="audio-clip-pill" style="margin-left:${left}px;flex-basis:${width}px" title="${escapeHtml(asset?.name || clip.name)}">${escapeHtml(trackKey)} · ${escapeHtml(asset?.name || clip.name)} · ${formatTime(clip.duration)}</div>`;
     }).join("");
     row.innerHTML = `
       <div class="audio-track-label">${escapeHtml(trackKey)}</div>
@@ -317,6 +402,7 @@ function renderInspector() {
   if (!item) return;
 
   const asset = assetForItem(item);
+  const transform = normalizeTransform(item.transform);
   els.clipName.value = item.name;
   els.clipRole.value = item.role;
   els.clipStart.max = asset ? String(asset.duration) : "";
@@ -324,20 +410,29 @@ function renderInspector() {
   els.clipStart.value = String(item.start);
   els.clipEnd.value = String(item.end);
   els.clipMuted.checked = item.muted;
+  els.clipScale.value = String(transform.scale);
+  els.clipX.value = String(transform.x);
+  els.clipY.value = String(transform.y);
+  els.clipRotation.value = String(transform.rotation);
+  els.clipOpacity.value = String(transform.opacity);
   els.narrationVolume.value = String(state.audioTracks.narration.volume);
   els.musicVolume.value = String(state.audioTracks.music.volume);
+  applyPreviewTransform(item);
 }
 
-function renderTransport(currentSeconds = 0) {
+function renderTransport(currentSeconds = state.cursorSeconds) {
   const total = projectDuration();
+  state.cursorSeconds = clamp(currentSeconds, 0, total);
   els.playButton.textContent = state.isPlaying ? "Ⅱ" : "▶";
-  els.seekSlider.value = total > 0 ? String(Math.round((currentSeconds / total) * 1000)) : "0";
-  els.timeReadout.textContent = `${formatTime(currentSeconds)} / ${formatTime(total)}`;
+  els.seekSlider.value = total > 0 ? String(Math.round((state.cursorSeconds / total) * 1000)) : "0";
+  els.timeReadout.textContent = `${formatTime(state.cursorSeconds)} / ${formatTime(total)}`;
+  setPlayheadPosition();
 }
 
 function updateSelectedFromForm() {
   const item = selectedItem();
   if (!item) return;
+  pushHistory();
   const asset = assetForItem(item);
   const maxEnd = asset ? asset.duration : item.end;
   const start = clamp(Number(els.clipStart.value) || 0, 0, maxEnd);
@@ -347,11 +442,20 @@ function updateSelectedFromForm() {
   item.start = roundTime(start);
   item.end = roundTime(end);
   item.muted = els.clipMuted.checked;
+  item.transform = {
+    x: roundTime(Number(els.clipX.value) || 0),
+    y: roundTime(Number(els.clipY.value) || 0),
+    scale: clamp(Number(els.clipScale.value) || 1, 0.1, 2),
+    rotation: roundTime(Number(els.clipRotation.value) || 0),
+    opacity: clamp(Number(els.clipOpacity.value) || 1, 0, 1),
+  };
+  applyPreviewTransform(item);
   renderTimeline();
   renderTransport();
 }
 
 function updateTrackVolume(trackKey, value) {
+  pushHistory();
   const track = state.audioTracks[trackKey];
   track.volume = Number(value);
   for (const clip of track.clips) clip.volume = track.volume;
@@ -362,6 +466,7 @@ async function playPreview(startSeconds = currentTimelineSeconds()) {
   if (!state.timeline.length) return;
   state.playToken += 1;
   state.isPlaying = true;
+  state.cursorSeconds = startSeconds;
   const token = state.playToken;
   renderTransport(startSeconds);
   startAudioPreview(startSeconds, token);
@@ -385,6 +490,7 @@ function playPreviewItem(item, offset, token) {
     }
     state.activeItemId = item.id;
     renderTimeline();
+    applyPreviewTransform(item);
     const video = els.previewVideo;
     video.src = asset.url;
     video.muted = item.muted;
@@ -404,6 +510,7 @@ function playPreviewItem(item, offset, token) {
         return;
       }
       const timelineSeconds = secondsBeforeItem(item.id) + Math.max(0, video.currentTime - item.start);
+      state.cursorSeconds = timelineSeconds;
       renderTransport(timelineSeconds);
       if (video.currentTime >= item.end || video.ended) {
         video.pause();
@@ -422,11 +529,13 @@ function stopPreview(resetActive = true) {
   els.previewVideo.pause();
   if (resetActive) state.activeItemId = null;
   stopAudioPreview();
+  applyPreviewTransform(selectedItem());
   render();
 }
 
 function seekPreview(seconds) {
   stopPreview();
+  state.cursorSeconds = clamp(seconds, 0, projectDuration());
   const position = timelinePositionForSeconds(seconds);
   const item = state.timeline[position.index];
   if (!item) {
@@ -434,8 +543,15 @@ function seekPreview(seconds) {
     return;
   }
   const asset = assetForItem(item);
+  if (!asset?.url) {
+    renderTransport(state.cursorSeconds);
+    setStatus("Clip media is missing. Load or re-import the source file.");
+    return;
+  }
+  state.selectedItemId = item.id;
   els.previewVideo.src = asset.url;
   els.previewVideo.muted = item.muted;
+  applyPreviewTransform(item);
   waitForEvent(els.previewVideo, "loadedmetadata")
     .then(() => seekVideo(els.previewVideo, item.start + position.offset))
     .then(() => renderTransport(seconds));
@@ -478,6 +594,59 @@ function downloadBackendJobJson() {
   downloadJson(job, "manual-timeline-job.json");
 }
 
+async function saveLocalProject() {
+  setStatus("Saving local project");
+  try {
+    const db = await openProjectDb();
+    const payload = {
+      savedAt: new Date().toISOString(),
+      assets: state.assets.map((asset) => ({
+        id: asset.id,
+        kind: asset.kind,
+        name: asset.name,
+        duration: asset.duration,
+        width: asset.width,
+        height: asset.height,
+        file: asset.file || null,
+      })),
+      editState: cloneEditableState(),
+    };
+    await putStoreValue(db, PROJECT_STORE, payload);
+    db.close();
+    setStatus("Local project saved");
+  } catch (error) {
+    setStatus(`Save failed: ${error.message}`);
+  }
+}
+
+async function loadLocalProject() {
+  setStatus("Loading local project");
+  try {
+    const db = await openProjectDb();
+    const payload = await getStoreValue(db, PROJECT_STORE);
+    db.close();
+    if (!payload) {
+      setStatus("No local project saved yet");
+      return;
+    }
+    stopPreview();
+    state.assets.forEach((asset) => {
+      if (asset.url) URL.revokeObjectURL(asset.url);
+    });
+    state.assets = payload.assets.map((asset) => ({
+      ...asset,
+      url: asset.file ? URL.createObjectURL(asset.file) : "",
+    }));
+    restoreEditableState(payload.editState);
+    state.history = [];
+    state.future = [];
+    render();
+    setStatus(`Loaded local project from ${new Date(payload.savedAt).toLocaleString()}`);
+  } catch (error) {
+    setStatus(`Load failed: ${error.message}`);
+  }
+}
+
 function startAudioPreview(startSeconds, token) {
   stopAudioPreview();
   const startedAt = performance.now() - startSeconds * 1000;
@@ -517,15 +686,42 @@ function stopAudioPreview() {
 function duplicateSelectedItem() {
   const item = selectedItem();
   if (!item) return;
+  pushHistory();
   const index = state.timeline.findIndex((clip) => clip.id === item.id);
-  state.timeline.splice(index + 1, 0, { ...item, id: makeId("clip"), name: `${item.name} copy` });
+  state.timeline.splice(index + 1, 0, { ...structuredClone(item), id: makeId("clip"), name: `${item.name} copy` });
   state.selectedItemId = state.timeline[index + 1].id;
   render();
+}
+
+function splitAtCursor() {
+  const position = timelinePositionForSeconds(state.cursorSeconds);
+  const item = state.timeline[position.index];
+  if (!item) return;
+  const duration = Math.max(0, item.end - item.start);
+  const offset = clamp(position.offset, 0, duration);
+  if (offset <= 0.05 || duration - offset <= 0.05) {
+    setStatus("Move the playhead inside a clip before splitting");
+    return;
+  }
+  pushHistory();
+  const splitSourceTime = roundTime(item.start + offset);
+  const second = {
+    ...structuredClone(item),
+    id: makeId("clip"),
+    name: `${item.name} part 2`,
+    start: splitSourceTime,
+  };
+  item.end = splitSourceTime;
+  state.timeline.splice(position.index + 1, 0, second);
+  state.selectedItemId = second.id;
+  render();
+  setStatus("Clip split");
 }
 
 function deleteSelectedItem() {
   const index = state.timeline.findIndex((item) => item.id === state.selectedItemId);
   if (index < 0) return;
+  pushHistory();
   state.timeline.splice(index, 1);
   state.selectedItemId = state.timeline[Math.min(index, state.timeline.length - 1)]?.id || null;
   render();
@@ -533,6 +729,7 @@ function deleteSelectedItem() {
 
 function moveItem(fromIndex, toIndex) {
   if (toIndex < 0 || toIndex >= state.timeline.length) return;
+  pushHistory();
   const [item] = state.timeline.splice(fromIndex, 1);
   state.timeline.splice(toIndex, 0, item);
   render();
@@ -542,6 +739,53 @@ function moveItemToIndex(itemId, toIndex) {
   const fromIndex = state.timeline.findIndex((item) => item.id === itemId);
   if (fromIndex < 0 || fromIndex === toIndex) return;
   moveItem(fromIndex, toIndex);
+}
+
+function undoEdit() {
+  if (!state.history.length) return;
+  state.future.push(cloneEditableState());
+  const snapshot = state.history.pop();
+  restoreEditableState(snapshot);
+  render();
+  setStatus("Undo");
+}
+
+function redoEdit() {
+  if (!state.future.length) return;
+  state.history.push(cloneEditableState());
+  const snapshot = state.future.pop();
+  restoreEditableState(snapshot);
+  render();
+  setStatus("Redo");
+}
+
+function pushHistory() {
+  if (state.restoringHistory) return;
+  state.history.push(cloneEditableState());
+  if (state.history.length > 80) state.history.shift();
+  state.future = [];
+}
+
+function cloneEditableState() {
+  return structuredClone({
+    timeline: state.timeline,
+    audioTracks: state.audioTracks,
+    selectedItemId: state.selectedItemId,
+    cursorSeconds: state.cursorSeconds,
+  });
+}
+
+function restoreEditableState(snapshot) {
+  state.restoringHistory = true;
+  state.timeline = structuredClone(snapshot.timeline || []);
+  state.audioTracks = structuredClone(snapshot.audioTracks || {
+    narration: { id: "narration_track", role: "narration", volume: 1, clips: [] },
+    music: { id: "music_track", role: "music", volume: 0.35, clips: [] },
+  });
+  state.selectedItemId = snapshot.selectedItemId || null;
+  state.activeItemId = null;
+  state.cursorSeconds = Number(snapshot.cursorSeconds) || 0;
+  state.restoringHistory = false;
 }
 
 function makeMiniButton(text, label) {
@@ -574,7 +818,7 @@ function projectDuration() {
 
 function currentTimelineSeconds() {
   const item = state.timeline.find((clip) => clip.id === state.activeItemId);
-  if (!item) return 0;
+  if (!item) return state.cursorSeconds;
   return secondsBeforeItem(item.id) + Math.max(0, els.previewVideo.currentTime - item.start);
 }
 
@@ -598,6 +842,37 @@ function timelinePositionForSeconds(seconds) {
     remaining -= duration;
   }
   return { index: 0, offset: 0 };
+}
+
+function secondsFromTrackPoint(clientX) {
+  const rect = els.trackArea.getBoundingClientRect();
+  const scrollLeft = els.trackArea.scrollLeft || 0;
+  const x = clamp(clientX - rect.left + scrollLeft, 0, TRACK_PIXEL_WIDTH);
+  return roundTime((x / TRACK_PIXEL_WIDTH) * Math.max(projectDuration(), 20));
+}
+
+function setPlayheadPosition() {
+  const total = Math.max(projectDuration(), 20);
+  const left = clamp((state.cursorSeconds / total) * TRACK_PIXEL_WIDTH, 0, TRACK_PIXEL_WIDTH);
+  els.trackArea.style.setProperty("--playhead-left", `${left}px`);
+}
+
+function normalizeTransform(transform) {
+  return {
+    ...DEFAULT_TRANSFORM,
+    ...(transform || {}),
+    scale: clamp(Number(transform?.scale ?? DEFAULT_TRANSFORM.scale), 0.1, 2),
+    opacity: clamp(Number(transform?.opacity ?? DEFAULT_TRANSFORM.opacity), 0, 1),
+    x: Number(transform?.x ?? DEFAULT_TRANSFORM.x) || 0,
+    y: Number(transform?.y ?? DEFAULT_TRANSFORM.y) || 0,
+    rotation: Number(transform?.rotation ?? DEFAULT_TRANSFORM.rotation) || 0,
+  };
+}
+
+function applyPreviewTransform(item) {
+  const transform = normalizeTransform(item?.transform);
+  els.previewVideo.style.transform = `translate(${transform.x}px, ${transform.y}px) scale(${transform.scale}) rotate(${transform.rotation}deg)`;
+  els.previewVideo.style.opacity = String(transform.opacity);
 }
 
 function waitForEvent(target, eventName) {
@@ -651,6 +926,35 @@ function downloadBlob(blob, filename) {
   link.click();
   link.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function openProjectDb() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open("manual-video-editor", 1);
+    request.onupgradeneeded = () => {
+      request.result.createObjectStore("projects");
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error || new Error("Could not open local project database"));
+  });
+}
+
+function putStoreValue(db, key, value) {
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction("projects", "readwrite");
+    transaction.objectStore("projects").put(value, key);
+    transaction.oncomplete = resolve;
+    transaction.onerror = () => reject(transaction.error || new Error("Could not save local project"));
+  });
+}
+
+function getStoreValue(db, key) {
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction("projects", "readonly");
+    const request = transaction.objectStore("projects").get(key);
+    request.onsuccess = () => resolve(request.result || null);
+    request.onerror = () => reject(request.error || new Error("Could not load local project"));
+  });
 }
 
 function setStatus(message) {

@@ -11,7 +11,7 @@ export const MediaRecorderRenderer = {
       supportsRealtimeOnly: true,
       supportsOfflineRender: false,
       supportsMultipleAudioTracks: true,
-      supportsVideoTransforms: false,
+      supportsVideoTransforms: true,
       supportsTransitions: false,
     };
   },
@@ -113,7 +113,7 @@ async function renderVideoClip({ clip, ir, video, context, videoGain, onFirstFra
         firstFrameDrawn = true;
         onFirstFrame();
       }
-      drawVideoContain(context, video, ir.canvas.width, ir.canvas.height, ir.canvas.background);
+      drawVideoContain(context, video, ir.canvas.width, ir.canvas.height, ir.canvas.background, clip.transform);
       if (video.currentTime >= clip.sourceStart + clip.duration || video.ended) {
         video.pause();
         resolve();
@@ -223,7 +223,7 @@ function seekVideo(video, seconds) {
   });
 }
 
-function drawVideoContain(context, video, width, height, background) {
+function drawVideoContain(context, video, width, height, background, transform = {}) {
   context.fillStyle = background;
   context.fillRect(0, 0, width, height);
   const sourceWidth = video.videoWidth || width;
@@ -231,7 +231,22 @@ function drawVideoContain(context, video, width, height, background) {
   const scale = Math.min(width / sourceWidth, height / sourceHeight);
   const drawWidth = sourceWidth * scale;
   const drawHeight = sourceHeight * scale;
-  const x = (width - drawWidth) / 2;
-  const y = (height - drawHeight) / 2;
-  context.drawImage(video, x, y, drawWidth, drawHeight);
+  const normalized = normalizeTransform(transform);
+  context.save();
+  context.globalAlpha = normalized.opacity;
+  context.translate(width / 2 + normalized.x, height / 2 + normalized.y);
+  context.rotate((normalized.rotation * Math.PI) / 180);
+  context.scale(normalized.scale, normalized.scale);
+  context.drawImage(video, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight);
+  context.restore();
+}
+
+function normalizeTransform(transform) {
+  return {
+    x: Number(transform?.x ?? 0) || 0,
+    y: Number(transform?.y ?? 0) || 0,
+    scale: Math.min(Math.max(Number(transform?.scale ?? 1) || 1, 0.1), 2),
+    rotation: Number(transform?.rotation ?? 0) || 0,
+    opacity: Math.min(Math.max(Number(transform?.opacity ?? 1) || 1, 0), 1),
+  };
 }
