@@ -48,7 +48,7 @@ button {
 
 .app-shell {
   display: grid;
-  grid-template-rows: 49px minmax(320px, 47.5%) minmax(320px, 1fr);
+  grid-template-rows: 49px minmax(0, 1fr);
   height: 100vh;
   overflow: hidden;
   background: var(--bg);
@@ -127,6 +127,10 @@ h1 {
   color: var(--danger);
 }
 
+.utility-action {
+  display: none;
+}
+
 .button:disabled {
   cursor: not-allowed;
   opacity: 0.55;
@@ -134,9 +138,27 @@ h1 {
 
 .workspace {
   display: grid;
-  grid-template-columns: 64px 280px minmax(600px, 2fr) minmax(360px, 1fr);
+  grid-template-columns: 64px 280px minmax(0, 1fr);
   min-height: 0;
   border-bottom: 1px solid var(--line);
+}
+
+.editor-main {
+  display: grid;
+  grid-template-rows: minmax(320px, calc((100vh - 60px) / 2)) minmax(320px, 1fr);
+  gap: 7px;
+  min-width: 0;
+  min-height: 0;
+  padding: 0 4px 4px;
+}
+
+.upper-editor {
+  display: grid;
+  grid-template-columns: minmax(600px, 2fr) minmax(360px, 1fr);
+  gap: 4px;
+  min-width: 0;
+  min-height: 0;
+  padding-top: 0;
 }
 
 .tool-rail {
@@ -188,7 +210,7 @@ h1 {
 .media-panel {
   border-right: 1px solid var(--line);
   display: grid;
-  grid-template-rows: 57px auto minmax(0, 1fr);
+  grid-template-rows: 57px 45px auto minmax(0, 1fr);
 }
 
 .panel-head {
@@ -213,10 +235,34 @@ h2 {
   font-size: 12px;
 }
 
+.media-tabs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 12px 6px;
+}
+
+.media-tab {
+  min-height: 28px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 0 8px;
+  font-size: 12px;
+}
+
+.media-tab.active {
+  border-color: var(--line);
+  background: var(--panel-2);
+  color: var(--ink);
+}
+
 .import-drop {
   display: grid;
   gap: 5px;
-  margin: 12px;
+  margin: 0 12px 12px;
   min-height: 78px;
   place-items: center;
   border: 1px dashed var(--line-strong);
@@ -290,7 +336,8 @@ h2 {
 .preview-panel {
   display: grid;
   grid-template-rows: minmax(260px, 1fr) 44px;
-  border-right: 1px solid var(--line);
+  border: 1px solid var(--line);
+  border-radius: 14px;
   overflow: hidden;
 }
 
@@ -299,26 +346,21 @@ h2 {
   display: grid;
   place-items: center;
   min-height: 300px;
-  background: #161616;
+  background: #151515;
   overflow: hidden;
 }
 
 .preview-frame::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background:
-    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
-    linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px);
-  background-size: 48px 48px;
-  pointer-events: none;
+  content: none;
 }
 
 #previewVideo {
   position: relative;
   z-index: 1;
-  width: min(68%, 460px);
-  height: min(82%, 520px);
+  width: min(79%, 889px);
+  max-height: 100%;
+  aspect-ratio: 16 / 9;
+  height: auto;
   object-fit: contain;
   background: #000;
   box-shadow: 0 0 0 1px #000;
@@ -327,9 +369,13 @@ h2 {
 .empty-preview {
   position: absolute;
   z-index: 2;
-  inset: 0;
   display: grid;
   place-items: center;
+  width: min(79%, 889px);
+  max-height: 100%;
+  aspect-ratio: 16 / 9;
+  background: #000;
+  box-shadow: 0 0 0 1px #000;
   color: var(--muted);
   font-size: 14px;
 }
@@ -383,12 +429,46 @@ h2 {
 
 .inspector {
   display: grid;
-  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  border: 1px solid var(--line);
+  border-radius: 14px;
   overflow: auto;
 }
 
 .inspector-tabs {
-  display: none;
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  min-height: 48px;
+  border-bottom: 1px solid var(--line);
+  padding: 0 20px;
+}
+
+.tab {
+  position: relative;
+  min-height: 48px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 0;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.tab.active {
+  color: var(--ink);
+}
+
+.tab.active::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  border-radius: 999px;
+  background: var(--ink);
 }
 
 .inspector-empty {
@@ -460,7 +540,9 @@ h2 {
 
 .timeline-panel {
   display: grid;
-  grid-template-rows: 41px 1fr;
+  grid-template-rows: 40px 1fr;
+  border: 1px solid var(--line);
+  border-radius: 14px;
   overflow: hidden;
 }
 
@@ -477,7 +559,7 @@ h2 {
 .timeline-zoom {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
 .tool-buttons button {
@@ -487,6 +569,13 @@ h2 {
   background: transparent;
   color: #ddd;
   cursor: pointer;
+}
+
+.tool-divider {
+  width: 1px;
+  height: 24px;
+  background: var(--line-strong);
+  margin: 0 3px;
 }
 
 .timeline-zoom {
@@ -688,7 +777,11 @@ h2 {
   }
 
   .workspace {
-    grid-template-columns: 58px 220px minmax(360px, 2fr) minmax(280px, 1fr);
+    grid-template-columns: 58px 220px minmax(0, 1fr);
+  }
+
+  .upper-editor {
+    grid-template-columns: minmax(360px, 2fr) minmax(280px, 1fr);
   }
 
   .timeline-stage {

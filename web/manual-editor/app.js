@@ -35,8 +35,10 @@ const els = {
   exportButton: document.getElementById("exportButton"),
   projectButton: document.getElementById("projectButton"),
   jobButton: document.getElementById("jobButton"),
+  inspectorTabs: document.querySelector(".inspector-tabs"),
   inspectorEmpty: document.getElementById("inspectorEmpty"),
   clipForm: document.getElementById("clipForm"),
+  audioForm: document.getElementById("audioForm"),
   clipName: document.getElementById("clipName"),
   clipRole: document.getElementById("clipRole"),
   clipStart: document.getElementById("clipStart"),
@@ -308,8 +310,10 @@ function renderAudioTimeline() {
 
 function renderInspector() {
   const item = selectedItem();
+  els.inspectorTabs.classList.toggle("hidden", !item);
   els.inspectorEmpty.classList.toggle("hidden", Boolean(item));
   els.clipForm.classList.toggle("hidden", !item);
+  els.audioForm.classList.toggle("hidden", !item);
   if (!item) return;
 
   const asset = assetForItem(item);
