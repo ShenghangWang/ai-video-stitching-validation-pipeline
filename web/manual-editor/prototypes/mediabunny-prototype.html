@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Mediabunny Prototype</title>
+  </head>
+  <body>
+    <main>
+      <h1>Mediabunny Prototype</h1>
+      <p>This isolated page verifies that Mediabunny can be loaded without coupling it to the editor UI.</p>
+      <input id="fileInput" type="file" accept="video/*,audio/*">
+      <pre id="output">Select a file.</pre>
+    </main>
+    <script type="module">
+      import { inspectWithMediabunny } from "./mediabunny-prototype.js";
+
+      const input = document.getElementById("fileInput");
+      const output = document.getElementById("output");
+
+      input.addEventListener("change", async () => {
+        const file = input.files?.[0];
+        if (!file) return;
+        output.textContent = "Loading Mediabunny...";
+        try {
+          output.textContent = JSON.stringify(await inspectWithMediabunny(file), null, 2);
+        } catch (error) {
+          output.textContent = error.message;
+        }
+      });
+    </script>
+  </body>
+</html>

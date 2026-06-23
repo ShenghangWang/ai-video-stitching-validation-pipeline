@@ -1,0 +1,8 @@
+{
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "node --check app.js && node --check model/project.js && node --check model/timeline-ir.js && node --check adapters/pipeline-job-adapter.js && node --check renderers/media-recorder-renderer.js && node --check renderers/webcodecs-renderer.js && node --check prototypes/mediabunny-prototype.js",
+    "test": "node tests/model-contracts.test.js"
+  }
+}

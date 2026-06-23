@@ -124,6 +124,36 @@ python -m app.main \
 
 Timeline metadata preserves each clip role in `timeline_roles`.
 
+## Browser Manual Editor
+
+The manual fallback editor lives in `web/manual-editor`. It is a static, pure-browser MVP for local video/audio import, manual clip ordering, trimming, narration/music tracks, preview, and WebM export.
+
+Run it locally:
+
+```bash
+python -m http.server 4173 --directory web/manual-editor
+```
+
+Then open:
+
+```text
+http://127.0.0.1:4173
+```
+
+The editor does not use the shuffled AI ordering algorithm and does not require cloud rendering. See `docs/browser_manual_editor_plan.md` for the architecture decision and limitations.
+
+The renderer migration path is specified in `docs/lightweight_to_full_renderer_spec.md`. The short version is: keep the browser editor project model renderer-neutral, use the current MediaRecorder/WebM path as Renderer V1, and add a WebCodecs renderer later behind the same interface.
+
+Open-source renderer research, commercial dependency gates, and the executable implementation sequence are tracked in `docs/open_source_renderer_research.md`, `docs/commercial_dependency_gate.md`, and `docs/executable_renderer_build_plan.md`.
+
+Browser editor checks:
+
+```bash
+cd web/manual-editor
+npm run check
+npm test
+```
+
 ## Metadata
 
 Every successful job writes a metadata JSON file with:

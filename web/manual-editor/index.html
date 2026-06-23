@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Manual Video Editor</title>
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div>
+          <h1>Manual Video Editor</h1>
+          <p id="statusText">Ready</p>
+        </div>
+        <div class="toolbar" aria-label="Editor actions">
+          <label class="button primary">
+            Import
+            <input id="fileInput" type="file" accept="video/*,audio/*" multiple>
+          </label>
+          <button id="exportButton" class="button">Export WebM</button>
+          <button id="projectButton" class="button">Project JSON</button>
+          <button id="jobButton" class="button">Job JSON</button>
+        </div>
+      </header>
+
+      <section class="workspace">
+        <aside class="media-panel" aria-label="Media bin">
+          <div class="panel-head">
+            <h2>Media</h2>
+            <span id="mediaCount">0</span>
+          </div>
+          <div id="mediaList" class="media-list"></div>
+        </aside>
+
+        <section class="preview-panel" aria-label="Preview">
+          <div class="preview-frame">
+            <video id="previewVideo" playsinline></video>
+            <div id="emptyPreview" class="empty-preview">Import clips to start editing</div>
+          </div>
+          <div class="transport">
+            <button id="playButton" class="icon-button" aria-label="Play or pause">Play</button>
+            <input id="seekSlider" type="range" min="0" max="1000" value="0" aria-label="Preview position">
+            <span id="timeReadout">00:00 / 00:00</span>
+          </div>
+        </section>
+
+        <aside class="inspector" aria-label="Clip inspector">
+          <div class="panel-head">
+            <h2>Clip</h2>
+          </div>
+          <div id="inspectorEmpty" class="inspector-empty">Select a timeline clip</div>
+          <form id="clipForm" class="clip-form hidden">
+            <label>
+              Name
+              <input id="clipName" type="text">
+            </label>
+            <label>
+              Role
+              <input id="clipRole" type="text" placeholder="intro, b-roll, outro">
+            </label>
+            <div class="trim-grid">
+              <label>
+                Start
+                <input id="clipStart" type="number" min="0" step="0.01">
+              </label>
+              <label>
+                End
+                <input id="clipEnd" type="number" min="0" step="0.01">
+              </label>
+            </div>
+            <label class="check-row">
+              <input id="clipMuted" type="checkbox">
+              Muted
+            </label>
+            <div class="inspector-actions">
+              <button id="duplicateButton" class="button" type="button">Duplicate</button>
+              <button id="deleteButton" class="button danger" type="button">Delete</button>
+            </div>
+          </form>
+          <form class="clip-form audio-form">
+            <label>
+              Narration volume
+              <input id="narrationVolume" type="range" min="0" max="1.5" value="1" step="0.01">
+            </label>
+            <label>
+              Music volume
+              <input id="musicVolume" type="range" min="0" max="1.5" value="0.35" step="0.01">
+            </label>
+          </form>
+        </aside>
+      </section>
+
+      <section class="timeline-panel" aria-label="Timeline">
+        <div class="panel-head">
+          <h2>Timeline</h2>
+          <span id="durationReadout">00:00</span>
+        </div>
+        <div id="timelineList" class="timeline-list"></div>
+        <div id="audioTimelineList" class="audio-timeline-list"></div>
+      </section>
+    </main>
+
+    <script type="module" src="app.js"></script>
+  </body>
+</html>
