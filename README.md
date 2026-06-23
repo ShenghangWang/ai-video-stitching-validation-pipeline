@@ -146,6 +146,8 @@ The renderer migration path is specified in `docs/lightweight_to_full_renderer_s
 
 Open-source renderer research, commercial dependency gates, and the executable implementation sequence are tracked in `docs/open_source_renderer_research.md`, `docs/commercial_dependency_gate.md`, and `docs/executable_renderer_build_plan.md`.
 
+The current renderer capability matrix is documented in `docs/current_renderer_capabilities.md`.
+
 Browser editor checks:
 
 ```bash
