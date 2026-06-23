@@ -48,7 +48,7 @@ button {
 
 .app-shell {
   display: grid;
-  grid-template-rows: 48px minmax(420px, 1fr) 330px;
+  grid-template-rows: 49px minmax(320px, 47.5%) minmax(320px, 1fr);
   height: 100vh;
   overflow: hidden;
   background: var(--bg);
@@ -134,7 +134,7 @@ h1 {
 
 .workspace {
   display: grid;
-  grid-template-columns: 64px 240px minmax(460px, 1fr) 360px;
+  grid-template-columns: 64px 280px minmax(600px, 2fr) minmax(360px, 1fr);
   min-height: 0;
   border-bottom: 1px solid var(--line);
 }
@@ -188,7 +188,7 @@ h1 {
 .media-panel {
   border-right: 1px solid var(--line);
   display: grid;
-  grid-template-rows: 46px auto minmax(0, 1fr);
+  grid-template-rows: 57px auto minmax(0, 1fr);
 }
 
 .panel-head {
@@ -196,8 +196,8 @@ h1 {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  min-height: 46px;
-  padding: 0 14px;
+  min-height: 57px;
+  padding: 0 16px;
   border-bottom: 1px solid var(--line);
 }
 
@@ -289,7 +289,7 @@ h2 {
 
 .preview-panel {
   display: grid;
-  grid-template-rows: minmax(300px, 1fr) 54px;
+  grid-template-rows: minmax(260px, 1fr) 44px;
   border-right: 1px solid var(--line);
   overflow: hidden;
 }
@@ -340,7 +340,7 @@ h2 {
   align-items: center;
   gap: 10px;
   border-top: 1px solid var(--line);
-  padding: 0 14px;
+  padding: 0 12px;
   background: #171717;
 }
 
@@ -383,31 +383,12 @@ h2 {
 
 .inspector {
   display: grid;
-  grid-template-rows: 46px minmax(0, auto) auto;
+  grid-template-rows: minmax(0, 1fr) auto;
   overflow: auto;
 }
 
 .inspector-tabs {
-  display: flex;
-  align-items: end;
-  gap: 20px;
-  border-bottom: 1px solid var(--line);
-  padding: 0 16px;
-}
-
-.tab {
-  height: 46px;
-  border: 0;
-  border-bottom: 2px solid transparent;
-  background: transparent;
-  color: var(--muted);
-  cursor: pointer;
-  font-weight: 700;
-}
-
-.tab.active {
-  border-color: var(--ink);
-  color: var(--ink);
+  display: none;
 }
 
 .inspector-empty {
@@ -479,7 +460,7 @@ h2 {
 
 .timeline-panel {
   display: grid;
-  grid-template-rows: 44px 1fr;
+  grid-template-rows: 41px 1fr;
   overflow: hidden;
 }
 
@@ -520,7 +501,7 @@ h2 {
 
 .timeline-stage {
   display: grid;
-  grid-template-columns: 190px 1fr;
+  grid-template-columns: 176px 1fr;
   min-height: 0;
 }
 
@@ -707,7 +688,7 @@ h2 {
   }
 
   .workspace {
-    grid-template-columns: 58px 210px minmax(360px, 1fr) 300px;
+    grid-template-columns: 58px 220px minmax(360px, 2fr) minmax(280px, 1fr);
   }
 
   .timeline-stage {
