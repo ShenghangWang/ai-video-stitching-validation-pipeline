@@ -23,6 +23,7 @@ const els = {
   mediaList: document.getElementById("mediaList"),
   mediaCount: document.getElementById("mediaCount"),
   timelineList: document.getElementById("timelineList"),
+  timelineRuler: document.getElementById("timelineRuler"),
   audioTimelineList: document.getElementById("audioTimelineList"),
   durationReadout: document.getElementById("durationReadout"),
   previewVideo: document.getElementById("previewVideo"),
@@ -175,11 +176,24 @@ function addAudioAssetToTrack(asset, trackKey) {
 
 function render() {
   renderMedia();
+  renderRuler();
   renderTimeline();
   renderAudioTimeline();
   renderInspector();
   renderTransport();
   els.emptyPreview.classList.toggle("hidden", state.timeline.length > 0);
+}
+
+function renderRuler() {
+  els.timelineRuler.innerHTML = "";
+  const total = Math.max(projectDuration(), 20);
+  const tickCount = 12;
+  for (let index = 0; index < tickCount; index += 1) {
+    const tick = document.createElement("div");
+    tick.className = "ruler-tick";
+    tick.textContent = formatTime((total / (tickCount - 1)) * index);
+    els.timelineRuler.appendChild(tick);
+  }
 }
 
 function renderMedia() {
@@ -220,7 +234,7 @@ function renderMedia() {
 
 function renderTimeline() {
   els.timelineList.innerHTML = "";
-  els.durationReadout.textContent = formatTime(timelineDuration());
+  els.durationReadout.textContent = formatTime(projectDuration());
 
   if (!state.timeline.length) {
     const empty = document.createElement("div");
@@ -281,7 +295,8 @@ function renderAudioTimeline() {
     row.className = "audio-track-row";
     const clips = track.clips.map((clip) => {
       const asset = state.assets.find((candidate) => candidate.id === clip.assetId);
-      return `<div class="audio-clip-pill" title="${escapeHtml(asset?.name || clip.name)}">${escapeHtml(trackKey)}: ${escapeHtml(asset?.name || clip.name)}<br>${formatTime(clip.duration)} | vol ${Number(track.volume).toFixed(2)}</div>`;
+      const width = Math.max(160, Math.min(900, clip.duration * 42));
+      return `<div class="audio-clip-pill" style="flex-basis:${width}px" title="${escapeHtml(asset?.name || clip.name)}">${escapeHtml(trackKey)} · ${escapeHtml(asset?.name || clip.name)} · ${formatTime(clip.duration)}</div>`;
     }).join("");
     row.innerHTML = `
       <div class="audio-track-label">${escapeHtml(trackKey)}</div>
@@ -310,8 +325,8 @@ function renderInspector() {
 }
 
 function renderTransport(currentSeconds = 0) {
-  const total = timelineDuration();
-  els.playButton.textContent = state.isPlaying ? "Pause" : "Play";
+  const total = projectDuration();
+  els.playButton.textContent = state.isPlaying ? "Ⅱ" : "▶";
   els.seekSlider.value = total > 0 ? String(Math.round((currentSeconds / total) * 1000)) : "0";
   els.timeReadout.textContent = `${formatTime(currentSeconds)} / ${formatTime(total)}`;
 }
@@ -544,6 +559,13 @@ function assetForItem(item) {
 
 function timelineDuration() {
   return state.timeline.reduce((total, item) => total + Math.max(0, item.end - item.start), 0);
+}
+
+function projectDuration() {
+  const audioDuration = Object.values(state.audioTracks).reduce((max, track) => {
+    return Math.max(max, ...track.clips.map((clip) => clip.timelineStart + clip.duration), 0);
+  }, 0);
+  return Math.max(timelineDuration(), audioDuration);
 }
 
 function currentTimelineSeconds() {

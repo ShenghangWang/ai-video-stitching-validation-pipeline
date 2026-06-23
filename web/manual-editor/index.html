@@ -10,45 +10,77 @@
   <body>
     <main class="app-shell">
       <header class="topbar">
-        <div>
-          <h1>Manual Video Editor</h1>
+        <div class="brand-row">
+          <span class="back-mark">‹</span>
+          <h1>Canvas</h1>
           <p id="statusText">Ready</p>
         </div>
         <div class="toolbar" aria-label="Editor actions">
-          <label class="button primary">
-            Import
-            <input id="fileInput" type="file" accept="video/*,audio/*" multiple>
-          </label>
-          <button id="exportButton" class="button">Export WebM</button>
-          <button id="projectButton" class="button">Project JSON</button>
-          <button id="jobButton" class="button">Job JSON</button>
+          <button id="projectButton" class="button ghost">Project JSON</button>
+          <button id="jobButton" class="button ghost">Job JSON</button>
+          <button id="exportButton" class="button primary">Export WebM</button>
         </div>
       </header>
 
       <section class="workspace">
+        <nav class="tool-rail" aria-label="Editor sections">
+          <button class="rail-item active" type="button">
+            <span class="rail-icon">▧</span>
+            <span>Local</span>
+          </button>
+          <button class="rail-item" type="button">
+            <span class="rail-icon">□</span>
+            <span>Project</span>
+          </button>
+          <button class="rail-item" type="button">
+            <span class="rail-icon">◷</span>
+            <span>History</span>
+          </button>
+          <button class="rail-item" type="button">
+            <span class="rail-icon">T</span>
+            <span>Text</span>
+          </button>
+          <button class="rail-item rail-bottom" type="button">
+            <span class="rail-icon">⚙</span>
+          </button>
+        </nav>
+
         <aside class="media-panel" aria-label="Media bin">
           <div class="panel-head">
-            <h2>Media</h2>
+            <h2>Local media</h2>
             <span id="mediaCount">0</span>
           </div>
+          <label class="import-drop">
+            <span>Import</span>
+            <small>Video / Audio</small>
+            <input id="fileInput" type="file" accept="video/*,audio/*" multiple>
+          </label>
           <div id="mediaList" class="media-list"></div>
         </aside>
 
         <section class="preview-panel" aria-label="Preview">
           <div class="preview-frame">
             <video id="previewVideo" playsinline></video>
-            <div id="emptyPreview" class="empty-preview">Import clips to start editing</div>
+            <div id="emptyPreview" class="empty-preview">Preview</div>
           </div>
-          <div class="transport">
-            <button id="playButton" class="icon-button" aria-label="Play or pause">Play</button>
+          <div class="preview-footer">
+            <span id="timeReadout" class="timecode">00:00 / 00:00</span>
+            <button id="playButton" class="play-button" aria-label="Play or pause">▶</button>
+            <div class="preview-actions">
+              <span>24fps</span>
+              <span>Fit</span>
+              <span>100%</span>
+            </div>
             <input id="seekSlider" type="range" min="0" max="1000" value="0" aria-label="Preview position">
-            <span id="timeReadout">00:00 / 00:00</span>
           </div>
         </section>
 
         <aside class="inspector" aria-label="Clip inspector">
-          <div class="panel-head">
-            <h2>Clip</h2>
+          <div class="inspector-tabs">
+            <button class="tab active" type="button">Position</button>
+            <button class="tab" type="button">Speed</button>
+            <button class="tab" type="button">Blend</button>
+            <button class="tab" type="button">Mask</button>
           </div>
           <div id="inspectorEmpty" class="inspector-empty">Select a timeline clip</div>
           <form id="clipForm" class="clip-form hidden">
@@ -60,6 +92,28 @@
               Role
               <input id="clipRole" type="text" placeholder="intro, b-roll, outro">
             </label>
+            <label>
+              Scale
+              <input type="range" min="0.1" max="2" step="0.01" value="1">
+            </label>
+            <div class="xy-grid">
+              <label>
+                X
+                <input type="number" value="0">
+              </label>
+              <label>
+                Y
+                <input type="number" value="0">
+              </label>
+            </div>
+            <label>
+              Rotation
+              <input type="range" min="-180" max="180" value="0">
+            </label>
+            <div class="mirror-row">
+              <button type="button">Flip H</button>
+              <button type="button">Flip V</button>
+            </div>
             <div class="trim-grid">
               <label>
                 Start
@@ -72,10 +126,10 @@
             </div>
             <label class="check-row">
               <input id="clipMuted" type="checkbox">
-              Muted
+              Mute source audio
             </label>
             <div class="inspector-actions">
-              <button id="duplicateButton" class="button" type="button">Duplicate</button>
+              <button id="duplicateButton" class="button ghost" type="button">Duplicate</button>
               <button id="deleteButton" class="button danger" type="button">Delete</button>
             </div>
           </form>
@@ -93,12 +147,35 @@
       </section>
 
       <section class="timeline-panel" aria-label="Timeline">
-        <div class="panel-head">
-          <h2>Timeline</h2>
-          <span id="durationReadout">00:00</span>
+        <div class="timeline-toolbar">
+          <div class="tool-buttons">
+            <button type="button">⌖</button>
+            <button type="button">✂</button>
+            <button type="button">↶</button>
+            <button type="button">↷</button>
+            <button type="button">▣</button>
+            <button type="button">⌫</button>
+          </div>
+          <div class="timeline-zoom">
+            <span id="durationReadout">00:00</span>
+            <span>−</span>
+            <input type="range" min="0" max="100" value="58" aria-label="Timeline zoom">
+            <span>＋</span>
+          </div>
         </div>
-        <div id="timelineList" class="timeline-list"></div>
-        <div id="audioTimelineList" class="audio-timeline-list"></div>
+        <div class="timeline-stage">
+          <div class="track-labels">
+            <div class="track-label">Video</div>
+            <div class="track-label">Narr</div>
+            <div class="track-label">Music</div>
+          </div>
+          <div class="track-area">
+            <div id="timelineRuler" class="timeline-ruler"></div>
+            <div class="playhead" aria-hidden="true"></div>
+            <div id="timelineList" class="timeline-list"></div>
+            <div id="audioTimelineList" class="audio-timeline-list"></div>
+          </div>
+        </div>
       </section>
     </main>
 
