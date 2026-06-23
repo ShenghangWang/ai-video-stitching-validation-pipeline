@@ -700,6 +700,7 @@ h2 {
 }
 
 .timeline-item {
+  position: relative;
   display: grid;
   grid-template-rows: 1fr auto;
   flex: 0 0 210px;
@@ -738,6 +739,47 @@ h2 {
   display: none;
 }
 
+.clip-resize-handle {
+  position: absolute;
+  z-index: 3;
+  top: 0;
+  bottom: 0;
+  width: 9px;
+  cursor: ew-resize;
+}
+
+.clip-resize-handle.left {
+  left: 0;
+}
+
+.clip-resize-handle.right {
+  right: 0;
+}
+
+.timeline-item:hover .clip-resize-handle,
+.timeline-item.selected .clip-resize-handle,
+.audio-clip-pill:hover .clip-resize-handle {
+  background: rgba(255, 212, 154, 0.38);
+}
+
+.timeline-item:hover .clip-resize-handle.left,
+.timeline-item.selected .clip-resize-handle.left,
+.audio-clip-pill:hover .clip-resize-handle.left {
+  border-left: 2px solid #ffd49a;
+}
+
+.timeline-item:hover .clip-resize-handle.right,
+.timeline-item.selected .clip-resize-handle.right,
+.audio-clip-pill:hover .clip-resize-handle.right {
+  border-right: 2px solid #ffd49a;
+}
+
+.is-resizing-clip,
+.is-resizing-clip * {
+  cursor: ew-resize !important;
+  user-select: none;
+}
+
 .audio-timeline-list {
   display: grid;
   width: var(--track-width);
@@ -763,6 +805,8 @@ h2 {
 
 .audio-clip-pill {
   position: relative;
+  display: flex;
+  align-items: center;
   flex: 0 0 720px;
   height: 34px;
   overflow: hidden;
@@ -772,7 +816,7 @@ h2 {
     repeating-linear-gradient(90deg, rgba(255,255,255,0.52) 0 2px, transparent 2px 5px),
     linear-gradient(180deg, var(--purple-2), var(--purple));
   color: #fff;
-  padding: 9px 10px 0;
+  padding: 0 12px;
   font-size: 12px;
 }
 
@@ -783,6 +827,47 @@ h2 {
   background:
     linear-gradient(90deg, transparent 0 12%, rgba(255, 145, 64, 0.7) 12% 12.4%, transparent 12.4% 34%, rgba(255, 145, 64, 0.7) 34% 34.3%, transparent 34.3% 69%, rgba(255, 145, 64, 0.7) 69% 69.3%, transparent 69.3%);
   pointer-events: none;
+}
+
+.audio-clip-label {
+  position: relative;
+  z-index: 2;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.context-menu {
+  position: fixed;
+  z-index: 1000;
+  display: grid;
+  min-width: 188px;
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: #202020;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.42);
+  padding: 6px;
+}
+
+.context-menu button {
+  min-height: 30px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  padding: 0 10px;
+  text-align: left;
+}
+
+.context-menu button:hover {
+  background: #303030;
+}
+
+.context-menu button.danger {
+  color: var(--danger);
 }
 
 .hidden {

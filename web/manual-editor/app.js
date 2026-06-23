@@ -32,6 +32,7 @@ const state = {
   history: [],
   future: [],
   restoringHistory: false,
+  resizeDrag: null,
 };
 
 const els = {
@@ -145,6 +146,12 @@ for (const tab of els.mediaTabs) {
 els.trackArea.addEventListener("click", (event) => {
   if (event.target.closest(".timeline-item, .audio-clip-pill, button")) return;
   seekPreview(secondsFromTrackPoint(event.clientX));
+});
+document.addEventListener("pointermove", resizeClipFromPointer);
+document.addEventListener("pointerup", stopClipResize);
+document.addEventListener("click", closeContextMenu);
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") closeContextMenu();
 });
 
 for (const input of [
@@ -339,11 +346,13 @@ function renderTimeline() {
     card.style.flexBasis = `${width}px`;
     card.draggable = true;
     card.innerHTML = `
+      <span class="clip-resize-handle left" data-edge="left" aria-hidden="true"></span>
       <div>
         <div class="timeline-name" title="${escapeHtml(item.name)}">${escapeHtml(item.name)}</div>
         <div class="timeline-meta">${formatTime(item.end - item.start)}${item.muted ? " | muted" : ""}</div>
       </div>
       <div class="timeline-meta">${escapeHtml(item.role || asset?.name || "clip")}</div>
+      <span class="clip-resize-handle right" data-edge="right" aria-hidden="true"></span>
       <div class="timeline-controls">
         <button class="mini-button" data-action="left" aria-label="Move left"><</button>
         <button class="mini-button" data-action="right" aria-label="Move right">></button>
@@ -353,6 +362,7 @@ function renderTimeline() {
       state.selectedItemId = item.id;
       render();
     });
+    card.addEventListener("contextmenu", (event) => openVideoContextMenu(event, item));
     card.addEventListener("dragstart", (event) => {
       event.dataTransfer.setData("text/plain", item.id);
     });
@@ -369,6 +379,9 @@ function renderTimeline() {
       event.stopPropagation();
       moveItem(index, index + 1);
     });
+    for (const handle of card.querySelectorAll(".clip-resize-handle")) {
+      handle.addEventListener("pointerdown", (event) => startVideoResize(event, item, handle.dataset.edge));
+    }
     els.timelineList.appendChild(card);
   });
 }
@@ -379,16 +392,43 @@ function renderAudioTimeline() {
   for (const [trackKey, track] of Object.entries(state.audioTracks)) {
     const row = document.createElement("div");
     row.className = "audio-track-row";
-    const clips = track.clips.map((clip) => {
+    const clipsContainer = document.createElement("div");
+    clipsContainer.className = "audio-track-clips";
+    if (!track.clips.length) {
+      const empty = document.createElement("span");
+      empty.className = "timeline-meta";
+      empty.textContent = "No audio";
+      clipsContainer.appendChild(empty);
+    }
+    track.clips.forEach((clip) => {
       const asset = state.assets.find((candidate) => candidate.id === clip.assetId);
       const left = (clip.timelineStart / total) * TRACK_PIXEL_WIDTH;
       const width = Math.max(160, Math.min(TRACK_PIXEL_WIDTH, (clip.duration / total) * TRACK_PIXEL_WIDTH));
-      return `<div class="audio-clip-pill" style="margin-left:${left}px;flex-basis:${width}px" title="${escapeHtml(asset?.name || clip.name)}">${escapeHtml(trackKey)} · ${escapeHtml(asset?.name || clip.name)} · ${formatTime(clip.duration)}</div>`;
-    }).join("");
-    row.innerHTML = `
-      <div class="audio-track-label">${escapeHtml(trackKey)}</div>
-      <div class="audio-track-clips">${clips || '<span class="timeline-meta">No audio</span>'}</div>
-    `;
+      const pill = document.createElement("div");
+      pill.className = "audio-clip-pill";
+      pill.style.marginLeft = `${left}px`;
+      pill.style.flexBasis = `${width}px`;
+      pill.title = asset?.name || clip.name;
+      pill.innerHTML = `
+        <span class="clip-resize-handle left" data-edge="left" aria-hidden="true"></span>
+        <span class="audio-clip-label"></span>
+        <span class="clip-resize-handle right" data-edge="right" aria-hidden="true"></span>
+      `;
+      pill.querySelector(".audio-clip-label").textContent = `${trackKey} · ${asset?.name || clip.name} · ${formatTime(clip.duration)}`;
+      pill.addEventListener("click", (event) => {
+        event.stopPropagation();
+        setStatus(`${trackKey} audio selected: ${asset?.name || clip.name}`);
+      });
+      pill.addEventListener("contextmenu", (event) => openAudioContextMenu(event, trackKey, clip));
+      for (const handle of pill.querySelectorAll(".clip-resize-handle")) {
+        handle.addEventListener("pointerdown", (event) => startAudioResize(event, trackKey, clip, handle.dataset.edge));
+      }
+      clipsContainer.appendChild(pill);
+    });
+    const label = document.createElement("div");
+    label.className = "audio-track-label";
+    label.textContent = trackKey;
+    row.append(label, clipsContainer);
     els.audioTimelineList.appendChild(row);
   }
 }
@@ -727,6 +767,68 @@ function deleteSelectedItem() {
   render();
 }
 
+function duplicateAudioClip(trackKey, clipId) {
+  const track = state.audioTracks[trackKey];
+  const index = track?.clips.findIndex((clip) => clip.id === clipId) ?? -1;
+  if (!track || index < 0) return;
+  pushHistory();
+  const copy = structuredClone(track.clips[index]);
+  copy.id = makeId("audio_clip");
+  copy.name = `${copy.name} copy`;
+  copy.timelineStart = roundTime(copy.timelineStart + copy.duration);
+  track.clips.splice(index + 1, 0, copy);
+  render();
+}
+
+function deleteAudioClip(trackKey, clipId) {
+  const track = state.audioTracks[trackKey];
+  const index = track?.clips.findIndex((clip) => clip.id === clipId) ?? -1;
+  if (!track || index < 0) return;
+  pushHistory();
+  track.clips.splice(index, 1);
+  render();
+}
+
+function trimVideoToCursor(itemId, edge) {
+  const item = state.timeline.find((candidate) => candidate.id === itemId);
+  const asset = item ? assetForItem(item) : null;
+  if (!item || !asset) return;
+  const itemStartOnTimeline = secondsBeforeItem(item.id);
+  const sourceAtCursor = roundTime(item.start + state.cursorSeconds - itemStartOnTimeline);
+  if (sourceAtCursor <= item.start || sourceAtCursor >= item.end) {
+    setStatus("Move the playhead inside this clip before trimming");
+    return;
+  }
+  pushHistory();
+  if (edge === "left") {
+    item.start = clamp(sourceAtCursor, 0, item.end - 0.05);
+  } else {
+    item.end = clamp(sourceAtCursor, item.start + 0.05, asset.duration);
+  }
+  render();
+}
+
+function trimAudioToCursor(trackKey, clipId, edge) {
+  const track = state.audioTracks[trackKey];
+  const clip = track?.clips.find((candidate) => candidate.id === clipId);
+  const asset = clip ? state.assets.find((candidate) => candidate.id === clip.assetId) : null;
+  if (!clip || !asset) return;
+  const offset = roundTime(state.cursorSeconds - clip.timelineStart);
+  if (offset <= 0 || offset >= clip.duration) {
+    setStatus("Move the playhead inside this audio clip before trimming");
+    return;
+  }
+  pushHistory();
+  if (edge === "left") {
+    clip.timelineStart = roundTime(state.cursorSeconds);
+    clip.sourceStart = roundTime(clip.sourceStart + offset);
+    clip.duration = roundTime(clip.duration - offset);
+  } else {
+    clip.duration = clamp(offset, 0.05, asset.duration - clip.sourceStart);
+  }
+  render();
+}
+
 function moveItem(fromIndex, toIndex) {
   if (toIndex < 0 || toIndex >= state.timeline.length) return;
   pushHistory();
@@ -739,6 +841,149 @@ function moveItemToIndex(itemId, toIndex) {
   const fromIndex = state.timeline.findIndex((item) => item.id === itemId);
   if (fromIndex < 0 || fromIndex === toIndex) return;
   moveItem(fromIndex, toIndex);
+}
+
+function startVideoResize(event, item, edge) {
+  event.preventDefault();
+  event.stopPropagation();
+  const asset = assetForItem(item);
+  if (!asset) return;
+  pushHistory();
+  state.selectedItemId = item.id;
+  state.resizeDrag = {
+    kind: "video",
+    edge,
+    id: item.id,
+    startX: event.clientX,
+    secondsPerPixel: Math.max(projectDuration(), 20) / TRACK_PIXEL_WIDTH,
+    originalStart: item.start,
+    originalEnd: item.end,
+    assetDuration: asset.duration,
+  };
+  document.body.classList.add("is-resizing-clip");
+}
+
+function startAudioResize(event, trackKey, clip, edge) {
+  event.preventDefault();
+  event.stopPropagation();
+  const asset = state.assets.find((candidate) => candidate.id === clip.assetId);
+  if (!asset) return;
+  pushHistory();
+  state.resizeDrag = {
+    kind: "audio",
+    edge,
+    trackKey,
+    id: clip.id,
+    startX: event.clientX,
+    secondsPerPixel: Math.max(projectDuration(), 20) / TRACK_PIXEL_WIDTH,
+    originalTimelineStart: clip.timelineStart,
+    originalSourceStart: clip.sourceStart,
+    originalDuration: clip.duration,
+    assetDuration: asset.duration,
+  };
+  document.body.classList.add("is-resizing-clip");
+}
+
+function resizeClipFromPointer(event) {
+  if (!state.resizeDrag) return;
+  const drag = state.resizeDrag;
+  const delta = roundTime((event.clientX - drag.startX) * drag.secondsPerPixel);
+  if (drag.kind === "video") {
+    const item = state.timeline.find((candidate) => candidate.id === drag.id);
+    if (!item) return;
+    if (drag.edge === "left") {
+      item.start = roundTime(clamp(drag.originalStart + delta, 0, drag.originalEnd - 0.05));
+    } else {
+      item.end = roundTime(clamp(drag.originalEnd + delta, drag.originalStart + 0.05, drag.assetDuration));
+    }
+    renderTimeline();
+    renderTransport();
+    renderInspector();
+    return;
+  }
+
+  const track = state.audioTracks[drag.trackKey];
+  const clip = track?.clips.find((candidate) => candidate.id === drag.id);
+  if (!clip) return;
+  if (drag.edge === "left") {
+    const minDelta = -Math.min(drag.originalTimelineStart, drag.originalSourceStart);
+    const maxDelta = drag.originalDuration - 0.05;
+    const safeDelta = clamp(delta, minDelta, maxDelta);
+    clip.timelineStart = roundTime(drag.originalTimelineStart + safeDelta);
+    clip.sourceStart = roundTime(drag.originalSourceStart + safeDelta);
+    clip.duration = roundTime(drag.originalDuration - safeDelta);
+  } else {
+    clip.duration = roundTime(clamp(drag.originalDuration + delta, 0.05, drag.assetDuration - drag.originalSourceStart));
+  }
+  renderAudioTimeline();
+  renderTransport();
+}
+
+function stopClipResize() {
+  if (!state.resizeDrag) return;
+  state.resizeDrag = null;
+  document.body.classList.remove("is-resizing-clip");
+  render();
+}
+
+function openVideoContextMenu(event, item) {
+  event.preventDefault();
+  state.selectedItemId = item.id;
+  render();
+  openContextMenu(event.clientX, event.clientY, [
+    { label: "Split at playhead", action: splitAtCursor },
+    { label: "Trim start to playhead", action: () => trimVideoToCursor(item.id, "left") },
+    { label: "Trim end to playhead", action: () => trimVideoToCursor(item.id, "right") },
+    { label: item.muted ? "Unmute source audio" : "Mute source audio", action: () => toggleVideoMute(item.id) },
+    { label: "Duplicate", action: duplicateSelectedItem },
+    { label: "Delete", action: deleteSelectedItem, danger: true },
+  ]);
+}
+
+function openAudioContextMenu(event, trackKey, clip) {
+  event.preventDefault();
+  openContextMenu(event.clientX, event.clientY, [
+    { label: "Trim start to playhead", action: () => trimAudioToCursor(trackKey, clip.id, "left") },
+    { label: "Trim end to playhead", action: () => trimAudioToCursor(trackKey, clip.id, "right") },
+    { label: "Duplicate audio", action: () => duplicateAudioClip(trackKey, clip.id) },
+    { label: "Delete audio", action: () => deleteAudioClip(trackKey, clip.id), danger: true },
+  ]);
+}
+
+function openContextMenu(x, y, actions) {
+  closeContextMenu();
+  const menu = document.createElement("div");
+  menu.className = "context-menu";
+  menu.style.left = `${x}px`;
+  menu.style.top = `${y}px`;
+  for (const action of actions) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = action.label;
+    if (action.danger) button.classList.add("danger");
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      closeContextMenu();
+      action.action();
+    });
+    menu.appendChild(button);
+  }
+  document.body.appendChild(menu);
+  const rect = menu.getBoundingClientRect();
+  menu.style.left = `${Math.min(x, window.innerWidth - rect.width - 8)}px`;
+  menu.style.top = `${Math.min(y, window.innerHeight - rect.height - 8)}px`;
+}
+
+function closeContextMenu() {
+  document.querySelector(".context-menu")?.remove();
+}
+
+function toggleVideoMute(itemId) {
+  const item = state.timeline.find((candidate) => candidate.id === itemId);
+  if (!item) return;
+  pushHistory();
+  item.muted = !item.muted;
+  render();
 }
 
 function undoEdit() {
