@@ -21,7 +21,9 @@ export function buildEditorProject({ assets, timeline, audioTracks }) {
       role: item.role,
       timelineStart: secondsBeforeItem(timeline, item.id),
       sourceStart: item.start,
-      duration: roundTime(Math.max(0, item.end - item.start)),
+      sourceDuration: roundTime(Math.max(0, item.end - item.start)),
+      duration: clipTimelineDuration(item),
+      speed: clipSpeed(item),
       muted: item.muted,
       transform: {
         x: Number(item.transform?.x ?? 0),
@@ -60,16 +62,24 @@ export function buildEditorProject({ assets, timeline, audioTracks }) {
 }
 
 export function timelineDuration(timeline) {
-  return timeline.reduce((total, item) => total + Math.max(0, item.end - item.start), 0);
+  return timeline.reduce((total, item) => total + clipTimelineDuration(item), 0);
 }
 
 export function secondsBeforeItem(timeline, itemId) {
   let seconds = 0;
   for (const item of timeline) {
     if (item.id === itemId) return roundTime(seconds);
-    seconds += Math.max(0, item.end - item.start);
+    seconds += clipTimelineDuration(item);
   }
   return roundTime(seconds);
+}
+
+function clipSpeed(item) {
+  return Math.min(Math.max(Number(item?.speed ?? 1) || 1, 0.25), 4);
+}
+
+function clipTimelineDuration(item) {
+  return roundTime(Math.max(0, item.end - item.start) / clipSpeed(item));
 }
 
 function roundTime(value) {

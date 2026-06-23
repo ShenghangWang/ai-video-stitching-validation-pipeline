@@ -16,9 +16,10 @@ const DEFAULT_TRANSFORM = Object.freeze({
 const state = {
   assets: [],
   timeline: [],
+  videoTrack: { id: "video_track_1", locked: false, hidden: false, solo: false },
   audioTracks: {
-    narration: { id: "narration_track", role: "narration", volume: 1, clips: [] },
-    music: { id: "music_track", role: "music", volume: 0.35, clips: [] },
+    narration: { id: "narration_track", role: "narration", volume: 1, clips: [], locked: false, muted: false, solo: false },
+    music: { id: "music_track", role: "music", volume: 0.35, clips: [], locked: false, muted: false, solo: false },
   },
   selectedItemId: null,
   activeItemId: null,
@@ -44,6 +45,7 @@ const els = {
   timelineList: document.getElementById("timelineList"),
   timelineRuler: document.getElementById("timelineRuler"),
   audioTimelineList: document.getElementById("audioTimelineList"),
+  trackLabels: document.querySelector(".track-labels"),
   trackArea: document.querySelector(".track-area"),
   durationReadout: document.getElementById("durationReadout"),
   previewVideo: document.getElementById("previewVideo"),
@@ -69,6 +71,7 @@ const els = {
   audioForm: document.getElementById("audioForm"),
   clipName: document.getElementById("clipName"),
   clipRole: document.getElementById("clipRole"),
+  clipSpeed: document.getElementById("clipSpeed"),
   clipStart: document.getElementById("clipStart"),
   clipEnd: document.getElementById("clipEnd"),
   clipMuted: document.getElementById("clipMuted"),
@@ -157,6 +160,7 @@ document.addEventListener("keydown", (event) => {
 for (const input of [
   els.clipName,
   els.clipRole,
+  els.clipSpeed,
   els.clipStart,
   els.clipEnd,
   els.clipMuted,
@@ -226,6 +230,10 @@ function createAudioAsset(file) {
 
 function addAssetToTimeline(asset) {
   if (asset.kind !== "video") return;
+  if (state.videoTrack.locked) {
+    setStatus("Video track is locked");
+    return;
+  }
   state.timeline.push({
     id: makeId("clip"),
     assetId: asset.id,
@@ -233,6 +241,7 @@ function addAssetToTimeline(asset) {
     role: "",
     start: 0,
     end: roundTime(asset.duration),
+    speed: 1,
     muted: false,
     transform: { ...DEFAULT_TRANSFORM },
   });
@@ -241,6 +250,10 @@ function addAssetToTimeline(asset) {
 function addAudioAssetToTrack(asset, trackKey) {
   if (asset.kind !== "audio") return;
   const track = state.audioTracks[trackKey];
+  if (track.locked) {
+    setStatus(`${trackKey} track is locked`);
+    return;
+  }
   track.clips.push({
     id: makeId("audio_clip"),
     assetId: asset.id,
@@ -255,11 +268,13 @@ function addAudioAssetToTrack(asset, trackKey) {
 function render() {
   renderMedia();
   renderRuler();
+  renderTrackLabels();
   renderTimeline();
   renderAudioTimeline();
   renderInspector();
   renderTransport(state.cursorSeconds);
   els.emptyPreview.classList.toggle("hidden", state.timeline.length > 0);
+  applyTrackVisibility();
 }
 
 function renderRuler() {
@@ -335,21 +350,23 @@ function renderTimeline() {
 
   state.timeline.forEach((item, index) => {
     const asset = assetForItem(item);
-    const duration = Math.max(0, item.end - item.start);
+    const duration = clipTimelineDuration(item);
     const width = Math.max(150, Math.min(TRACK_PIXEL_WIDTH, (duration / Math.max(projectDuration(), 20)) * TRACK_PIXEL_WIDTH));
     const card = document.createElement("article");
     card.className = [
       "timeline-item",
       item.id === state.selectedItemId ? "selected" : "",
       item.id === state.activeItemId ? "active" : "",
+      state.videoTrack.locked ? "locked" : "",
     ].join(" ");
     card.style.flexBasis = `${width}px`;
     card.draggable = true;
+    card.draggable = !state.videoTrack.locked;
     card.innerHTML = `
       <span class="clip-resize-handle left" data-edge="left" aria-hidden="true"></span>
       <div>
         <div class="timeline-name" title="${escapeHtml(item.name)}">${escapeHtml(item.name)}</div>
-        <div class="timeline-meta">${formatTime(item.end - item.start)}${item.muted ? " | muted" : ""}</div>
+        <div class="timeline-meta">${formatTime(clipTimelineDuration(item))}${clipSpeed(item) !== 1 ? ` | ${clipSpeed(item)}x` : ""}${item.muted ? " | muted" : ""}</div>
       </div>
       <div class="timeline-meta">${escapeHtml(item.role || asset?.name || "clip")}</div>
       <span class="clip-resize-handle right" data-edge="right" aria-hidden="true"></span>
@@ -364,6 +381,11 @@ function renderTimeline() {
     });
     card.addEventListener("contextmenu", (event) => openVideoContextMenu(event, item));
     card.addEventListener("dragstart", (event) => {
+      if (state.videoTrack.locked) {
+        event.preventDefault();
+        setStatus("Video track is locked");
+        return;
+      }
       event.dataTransfer.setData("text/plain", item.id);
     });
     card.addEventListener("dragover", (event) => event.preventDefault());
@@ -405,7 +427,7 @@ function renderAudioTimeline() {
       const left = (clip.timelineStart / total) * TRACK_PIXEL_WIDTH;
       const width = Math.max(160, Math.min(TRACK_PIXEL_WIDTH, (clip.duration / total) * TRACK_PIXEL_WIDTH));
       const pill = document.createElement("div");
-      pill.className = "audio-clip-pill";
+      pill.className = `audio-clip-pill ${track.locked ? "locked" : ""}`;
       pill.style.marginLeft = `${left}px`;
       pill.style.flexBasis = `${width}px`;
       pill.title = asset?.name || clip.name;
@@ -433,6 +455,52 @@ function renderAudioTimeline() {
   }
 }
 
+function renderTrackLabels() {
+  els.trackLabels.innerHTML = "";
+  els.trackLabels.appendChild(makeTrackLabel({
+    title: "Video",
+    locked: state.videoTrack.locked,
+    visible: !state.videoTrack.hidden,
+    solo: state.videoTrack.solo,
+    onLock: () => toggleVideoTrack("locked"),
+    onVisibility: () => toggleVideoTrack("hidden"),
+    onSolo: () => toggleVideoTrack("solo"),
+  }));
+  for (const [trackKey, track] of Object.entries(state.audioTracks)) {
+    els.trackLabels.appendChild(makeTrackLabel({
+      title: trackKey === "narration" ? "Narr" : "Music",
+      locked: track.locked,
+      visible: !track.muted,
+      solo: track.solo,
+      onLock: () => toggleAudioTrack(trackKey, "locked"),
+      onVisibility: () => toggleAudioTrack(trackKey, "muted"),
+      onSolo: () => toggleAudioTrack(trackKey, "solo"),
+    }));
+  }
+  const spacer = document.createElement("div");
+  spacer.className = "track-label spacer";
+  els.trackLabels.appendChild(spacer);
+}
+
+function makeTrackLabel({ title, locked, visible, solo, onLock, onVisibility, onSolo }) {
+  const row = document.createElement("div");
+  row.className = "track-label";
+  row.innerHTML = `
+    <span class="track-title"></span>
+    <span class="track-controls">
+      <button type="button" class="${locked ? "active" : ""}" title="${locked ? "Unlock track" : "Lock track"}">L</button>
+      <button type="button" class="${visible ? "active" : ""}" title="${visible ? "Hide or mute track" : "Show or unmute track"}">V</button>
+      <button type="button" class="${solo ? "active" : ""}" title="Solo track">S</button>
+    </span>
+  `;
+  row.querySelector(".track-title").textContent = title;
+  const [lockButton, visibilityButton, soloButton] = row.querySelectorAll("button");
+  lockButton.addEventListener("click", onLock);
+  visibilityButton.addEventListener("click", onVisibility);
+  soloButton.addEventListener("click", onSolo);
+  return row;
+}
+
 function renderInspector() {
   const item = selectedItem();
   els.inspectorTabs.classList.toggle("hidden", !item);
@@ -449,6 +517,7 @@ function renderInspector() {
   els.clipEnd.max = asset ? String(asset.duration) : "";
   els.clipStart.value = String(item.start);
   els.clipEnd.value = String(item.end);
+  els.clipSpeed.value = String(clipSpeed(item));
   els.clipMuted.checked = item.muted;
   els.clipScale.value = String(transform.scale);
   els.clipX.value = String(transform.x);
@@ -458,6 +527,7 @@ function renderInspector() {
   els.narrationVolume.value = String(state.audioTracks.narration.volume);
   els.musicVolume.value = String(state.audioTracks.music.volume);
   applyPreviewTransform(item);
+  applyTrackVisibility();
 }
 
 function renderTransport(currentSeconds = state.cursorSeconds) {
@@ -481,6 +551,7 @@ function updateSelectedFromForm() {
   item.role = els.clipRole.value.trim();
   item.start = roundTime(start);
   item.end = roundTime(end);
+  item.speed = clamp(Number(els.clipSpeed.value) || 1, 0.25, 4);
   item.muted = els.clipMuted.checked;
   item.transform = {
     x: roundTime(Number(els.clipX.value) || 0),
@@ -534,8 +605,9 @@ function playPreviewItem(item, offset, token) {
     const video = els.previewVideo;
     video.src = asset.url;
     video.muted = item.muted;
+    video.playbackRate = clipSpeed(item);
     await waitForEvent(video, "loadedmetadata");
-    await seekVideo(video, item.start + offset);
+    await seekVideo(video, item.start + offset * clipSpeed(item));
     try {
       await video.play();
     } catch {
@@ -549,7 +621,7 @@ function playPreviewItem(item, offset, token) {
         resolve();
         return;
       }
-      const timelineSeconds = secondsBeforeItem(item.id) + Math.max(0, video.currentTime - item.start);
+      const timelineSeconds = secondsBeforeItem(item.id) + Math.max(0, (video.currentTime - item.start) / clipSpeed(item));
       state.cursorSeconds = timelineSeconds;
       renderTransport(timelineSeconds);
       if (video.currentTime >= item.end || video.ended) {
@@ -567,6 +639,7 @@ function stopPreview(resetActive = true) {
   state.playToken += 1;
   state.isPlaying = false;
   els.previewVideo.pause();
+  els.previewVideo.playbackRate = 1;
   if (resetActive) state.activeItemId = null;
   stopAudioPreview();
   applyPreviewTransform(selectedItem());
@@ -591,17 +664,20 @@ function seekPreview(seconds) {
   state.selectedItemId = item.id;
   els.previewVideo.src = asset.url;
   els.previewVideo.muted = item.muted;
+  els.previewVideo.playbackRate = clipSpeed(item);
   applyPreviewTransform(item);
   waitForEvent(els.previewVideo, "loadedmetadata")
-    .then(() => seekVideo(els.previewVideo, item.start + position.offset))
+    .then(() => seekVideo(els.previewVideo, item.start + position.offset * clipSpeed(item)))
     .then(() => renderTransport(seconds));
 }
 
 async function exportWebM() {
+  const videoTimeline = shouldPlayVideoTrack() ? state.timeline : [];
+  const audioTracks = effectiveAudioTracks();
   const { ir, errors, warnings } = buildRendererTimeline({
     assets: state.assets,
-    timeline: state.timeline,
-    audioTracks: state.audioTracks,
+    timeline: videoTimeline,
+    audioTracks,
   });
   if (errors.length) {
     setStatus(errors[0]);
@@ -623,11 +699,14 @@ async function exportWebM() {
 
 function downloadProjectJson() {
   const payload = buildEditorProject({ assets: state.assets, timeline: state.timeline, audioTracks: state.audioTracks });
+  payload.timeline.videoTracks[0].locked = state.videoTrack.locked;
+  payload.timeline.videoTracks[0].hidden = state.videoTrack.hidden;
+  payload.timeline.videoTracks[0].solo = state.videoTrack.solo;
   downloadJson(payload, "manual-editor-project.json");
 }
 
 function downloadBackendJobJson() {
-  const { job, warnings } = buildPipelineJob({ assets: state.assets, timeline: state.timeline, audioTracks: state.audioTracks });
+  const { job, warnings } = buildPipelineJob({ assets: state.assets, timeline: shouldPlayVideoTrack() ? state.timeline : [], audioTracks: effectiveAudioTracks() });
   if (warnings.length) {
     setStatus(`Job JSON exported with ${warnings.length} compatibility warning${warnings.length === 1 ? "" : "s"}`);
   }
@@ -690,7 +769,7 @@ async function loadLocalProject() {
 function startAudioPreview(startSeconds, token) {
   stopAudioPreview();
   const startedAt = performance.now() - startSeconds * 1000;
-  for (const track of Object.values(state.audioTracks)) {
+  for (const track of Object.values(effectiveAudioTracks())) {
     for (const clip of track.clips) {
       const asset = state.assets.find((candidate) => candidate.id === clip.assetId);
       if (!asset) continue;
@@ -726,6 +805,10 @@ function stopAudioPreview() {
 function duplicateSelectedItem() {
   const item = selectedItem();
   if (!item) return;
+  if (state.videoTrack.locked) {
+    setStatus("Video track is locked");
+    return;
+  }
   pushHistory();
   const index = state.timeline.findIndex((clip) => clip.id === item.id);
   state.timeline.splice(index + 1, 0, { ...structuredClone(item), id: makeId("clip"), name: `${item.name} copy` });
@@ -734,17 +817,21 @@ function duplicateSelectedItem() {
 }
 
 function splitAtCursor() {
+  if (state.videoTrack.locked) {
+    setStatus("Video track is locked");
+    return;
+  }
   const position = timelinePositionForSeconds(state.cursorSeconds);
   const item = state.timeline[position.index];
   if (!item) return;
-  const duration = Math.max(0, item.end - item.start);
+  const duration = clipTimelineDuration(item);
   const offset = clamp(position.offset, 0, duration);
   if (offset <= 0.05 || duration - offset <= 0.05) {
     setStatus("Move the playhead inside a clip before splitting");
     return;
   }
   pushHistory();
-  const splitSourceTime = roundTime(item.start + offset);
+  const splitSourceTime = roundTime(item.start + offset * clipSpeed(item));
   const second = {
     ...structuredClone(item),
     id: makeId("clip"),
@@ -761,6 +848,10 @@ function splitAtCursor() {
 function deleteSelectedItem() {
   const index = state.timeline.findIndex((item) => item.id === state.selectedItemId);
   if (index < 0) return;
+  if (state.videoTrack.locked) {
+    setStatus("Video track is locked");
+    return;
+  }
   pushHistory();
   state.timeline.splice(index, 1);
   state.selectedItemId = state.timeline[Math.min(index, state.timeline.length - 1)]?.id || null;
@@ -771,6 +862,10 @@ function duplicateAudioClip(trackKey, clipId) {
   const track = state.audioTracks[trackKey];
   const index = track?.clips.findIndex((clip) => clip.id === clipId) ?? -1;
   if (!track || index < 0) return;
+  if (track.locked) {
+    setStatus(`${trackKey} track is locked`);
+    return;
+  }
   pushHistory();
   const copy = structuredClone(track.clips[index]);
   copy.id = makeId("audio_clip");
@@ -784,17 +879,25 @@ function deleteAudioClip(trackKey, clipId) {
   const track = state.audioTracks[trackKey];
   const index = track?.clips.findIndex((clip) => clip.id === clipId) ?? -1;
   if (!track || index < 0) return;
+  if (track.locked) {
+    setStatus(`${trackKey} track is locked`);
+    return;
+  }
   pushHistory();
   track.clips.splice(index, 1);
   render();
 }
 
 function trimVideoToCursor(itemId, edge) {
+  if (state.videoTrack.locked) {
+    setStatus("Video track is locked");
+    return;
+  }
   const item = state.timeline.find((candidate) => candidate.id === itemId);
   const asset = item ? assetForItem(item) : null;
   if (!item || !asset) return;
   const itemStartOnTimeline = secondsBeforeItem(item.id);
-  const sourceAtCursor = roundTime(item.start + state.cursorSeconds - itemStartOnTimeline);
+  const sourceAtCursor = roundTime(item.start + (state.cursorSeconds - itemStartOnTimeline) * clipSpeed(item));
   if (sourceAtCursor <= item.start || sourceAtCursor >= item.end) {
     setStatus("Move the playhead inside this clip before trimming");
     return;
@@ -810,6 +913,10 @@ function trimVideoToCursor(itemId, edge) {
 
 function trimAudioToCursor(trackKey, clipId, edge) {
   const track = state.audioTracks[trackKey];
+  if (track?.locked) {
+    setStatus(`${trackKey} track is locked`);
+    return;
+  }
   const clip = track?.clips.find((candidate) => candidate.id === clipId);
   const asset = clip ? state.assets.find((candidate) => candidate.id === clip.assetId) : null;
   if (!clip || !asset) return;
@@ -831,6 +938,10 @@ function trimAudioToCursor(trackKey, clipId, edge) {
 
 function moveItem(fromIndex, toIndex) {
   if (toIndex < 0 || toIndex >= state.timeline.length) return;
+  if (state.videoTrack.locked) {
+    setStatus("Video track is locked");
+    return;
+  }
   pushHistory();
   const [item] = state.timeline.splice(fromIndex, 1);
   state.timeline.splice(toIndex, 0, item);
@@ -846,6 +957,10 @@ function moveItemToIndex(itemId, toIndex) {
 function startVideoResize(event, item, edge) {
   event.preventDefault();
   event.stopPropagation();
+  if (state.videoTrack.locked) {
+    setStatus("Video track is locked");
+    return;
+  }
   const asset = assetForItem(item);
   if (!asset) return;
   pushHistory();
@@ -866,6 +981,11 @@ function startVideoResize(event, item, edge) {
 function startAudioResize(event, trackKey, clip, edge) {
   event.preventDefault();
   event.stopPropagation();
+  const track = state.audioTracks[trackKey];
+  if (track?.locked) {
+    setStatus(`${trackKey} track is locked`);
+    return;
+  }
   const asset = state.assets.find((candidate) => candidate.id === clip.assetId);
   if (!asset) return;
   pushHistory();
@@ -979,10 +1099,28 @@ function closeContextMenu() {
 }
 
 function toggleVideoMute(itemId) {
+  if (state.videoTrack.locked) {
+    setStatus("Video track is locked");
+    return;
+  }
   const item = state.timeline.find((candidate) => candidate.id === itemId);
   if (!item) return;
   pushHistory();
   item.muted = !item.muted;
+  render();
+}
+
+function toggleVideoTrack(key) {
+  pushHistory();
+  state.videoTrack[key] = !state.videoTrack[key];
+  render();
+}
+
+function toggleAudioTrack(trackKey, key) {
+  const track = state.audioTracks[trackKey];
+  if (!track) return;
+  pushHistory();
+  track[key] = !track[key];
   render();
 }
 
@@ -1013,6 +1151,7 @@ function pushHistory() {
 
 function cloneEditableState() {
   return structuredClone({
+    videoTrack: state.videoTrack,
     timeline: state.timeline,
     audioTracks: state.audioTracks,
     selectedItemId: state.selectedItemId,
@@ -1022,10 +1161,11 @@ function cloneEditableState() {
 
 function restoreEditableState(snapshot) {
   state.restoringHistory = true;
+  state.videoTrack = structuredClone(snapshot.videoTrack || { id: "video_track_1", locked: false, hidden: false, solo: false });
   state.timeline = structuredClone(snapshot.timeline || []);
   state.audioTracks = structuredClone(snapshot.audioTracks || {
-    narration: { id: "narration_track", role: "narration", volume: 1, clips: [] },
-    music: { id: "music_track", role: "music", volume: 0.35, clips: [] },
+    narration: { id: "narration_track", role: "narration", volume: 1, clips: [], locked: false, muted: false, solo: false },
+    music: { id: "music_track", role: "music", volume: 0.35, clips: [], locked: false, muted: false, solo: false },
   });
   state.selectedItemId = snapshot.selectedItemId || null;
   state.activeItemId = null;
@@ -1051,7 +1191,7 @@ function assetForItem(item) {
 }
 
 function timelineDuration() {
-  return state.timeline.reduce((total, item) => total + Math.max(0, item.end - item.start), 0);
+  return state.timeline.reduce((total, item) => total + clipTimelineDuration(item), 0);
 }
 
 function projectDuration() {
@@ -1061,17 +1201,42 @@ function projectDuration() {
   return Math.max(timelineDuration(), audioDuration);
 }
 
+function shouldPlayVideoTrack() {
+  const anySolo = state.videoTrack.solo || Object.values(state.audioTracks).some((track) => track.solo);
+  if (state.videoTrack.hidden) return false;
+  return !anySolo || state.videoTrack.solo;
+}
+
+function effectiveAudioTracks() {
+  const anySolo = state.videoTrack.solo || Object.values(state.audioTracks).some((track) => track.solo);
+  return Object.fromEntries(Object.entries(state.audioTracks).map(([trackKey, track]) => {
+    const shouldPlay = !track.muted && (!anySolo || track.solo);
+    return [
+      trackKey,
+      {
+        ...track,
+        volume: shouldPlay ? track.volume : 0,
+        clips: shouldPlay ? track.clips : [],
+      },
+    ];
+  }));
+}
+
+function applyTrackVisibility() {
+  els.previewVideo.classList.toggle("track-hidden", !shouldPlayVideoTrack());
+}
+
 function currentTimelineSeconds() {
   const item = state.timeline.find((clip) => clip.id === state.activeItemId);
   if (!item) return state.cursorSeconds;
-  return secondsBeforeItem(item.id) + Math.max(0, els.previewVideo.currentTime - item.start);
+  return secondsBeforeItem(item.id) + Math.max(0, (els.previewVideo.currentTime - item.start) / clipSpeed(item));
 }
 
 function secondsBeforeItem(itemId) {
   let seconds = 0;
   for (const item of state.timeline) {
     if (item.id === itemId) return seconds;
-    seconds += Math.max(0, item.end - item.start);
+    seconds += clipTimelineDuration(item);
   }
   return seconds;
 }
@@ -1080,13 +1245,21 @@ function timelinePositionForSeconds(seconds) {
   let remaining = clamp(seconds, 0, timelineDuration());
   for (let index = 0; index < state.timeline.length; index += 1) {
     const item = state.timeline[index];
-    const duration = Math.max(0, item.end - item.start);
+    const duration = clipTimelineDuration(item);
     if (remaining <= duration || index === state.timeline.length - 1) {
       return { index, offset: remaining };
     }
     remaining -= duration;
   }
   return { index: 0, offset: 0 };
+}
+
+function clipSpeed(item) {
+  return clamp(Number(item?.speed ?? 1) || 1, 0.25, 4);
+}
+
+function clipTimelineDuration(item) {
+  return roundTime(Math.max(0, item.end - item.start) / clipSpeed(item));
 }
 
 function secondsFromTrackPoint(clientX) {

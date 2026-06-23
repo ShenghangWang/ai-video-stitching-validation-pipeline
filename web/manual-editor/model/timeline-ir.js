@@ -25,7 +25,9 @@ export function buildRendererTimeline({ assets, timeline, audioTracks, settings 
       assetId: item.assetId,
       timelineStart: secondsBeforeItem(timeline, item.id),
       sourceStart: item.start,
-      duration: roundTime(Math.max(0, item.end - item.start)),
+      sourceDuration: roundTime(Math.max(0, item.end - item.start)),
+      duration: clipTimelineDuration(item),
+      speed: clipSpeed(item),
       muted: Boolean(item.muted),
       transform: item.transform || {
         x: 0,
@@ -114,9 +116,17 @@ function secondsBeforeItem(timeline, itemId) {
   let seconds = 0;
   for (const item of timeline) {
     if (item.id === itemId) return roundTime(seconds);
-    seconds += Math.max(0, item.end - item.start);
+    seconds += clipTimelineDuration(item);
   }
   return roundTime(seconds);
+}
+
+function clipSpeed(item) {
+  return Math.min(Math.max(Number(item?.speed ?? 1) || 1, 0.25), 4);
+}
+
+function clipTimelineDuration(item) {
+  return roundTime(Math.max(0, item.end - item.start) / clipSpeed(item));
 }
 
 function roundTime(value) {

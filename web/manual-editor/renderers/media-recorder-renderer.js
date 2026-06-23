@@ -102,6 +102,7 @@ async function renderVideoClip({ clip, ir, video, context, videoGain, onFirstFra
   if (!asset) return;
   if (videoGain) videoGain.gain.value = clip.muted ? 0 : 1;
   video.src = asset.objectUrl;
+  video.playbackRate = Number(clip.speed || 1);
   await waitForEvent(video, "loadedmetadata");
   await seekVideo(video, clip.sourceStart);
   await video.play();
@@ -114,8 +115,9 @@ async function renderVideoClip({ clip, ir, video, context, videoGain, onFirstFra
         onFirstFrame();
       }
       drawVideoContain(context, video, ir.canvas.width, ir.canvas.height, ir.canvas.background, clip.transform);
-      if (video.currentTime >= clip.sourceStart + clip.duration || video.ended) {
+      if (video.currentTime >= clip.sourceStart + (clip.sourceDuration ?? clip.duration) || video.ended) {
         video.pause();
+        video.playbackRate = 1;
         resolve();
         return;
       }
