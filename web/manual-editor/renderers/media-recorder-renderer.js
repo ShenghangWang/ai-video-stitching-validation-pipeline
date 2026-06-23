@@ -29,6 +29,7 @@ async function renderWithMediaRecorder(ir, settings) {
   canvas.width = ir.canvas.width;
   canvas.height = ir.canvas.height;
   const context = canvas.getContext("2d");
+  fillCanvas(context, ir.canvas.width, ir.canvas.height, ir.canvas.background);
   const fps = ir.canvas.fps;
   const video = document.createElement("video");
   video.playsInline = true;
@@ -226,8 +227,7 @@ function seekVideo(video, seconds) {
 }
 
 function drawVideoContain(context, video, width, height, background, transform = {}) {
-  context.fillStyle = background;
-  context.fillRect(0, 0, width, height);
+  fillCanvas(context, width, height, background);
   const sourceWidth = video.videoWidth || width;
   const sourceHeight = video.videoHeight || height;
   const scale = Math.min(width / sourceWidth, height / sourceHeight);
@@ -241,6 +241,11 @@ function drawVideoContain(context, video, width, height, background, transform =
   context.scale(normalized.scale, normalized.scale);
   context.drawImage(video, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight);
   context.restore();
+}
+
+function fillCanvas(context, width, height, background) {
+  context.fillStyle = background;
+  context.fillRect(0, 0, width, height);
 }
 
 function normalizeTransform(transform) {

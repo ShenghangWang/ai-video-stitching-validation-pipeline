@@ -229,12 +229,12 @@ function createAudioAsset(file) {
 }
 
 function addAssetToTimeline(asset) {
-  if (asset.kind !== "video") return;
+  if (asset.kind !== "video") return null;
   if (state.videoTrack.locked) {
     setStatus("Video track is locked");
-    return;
+    return null;
   }
-  state.timeline.push({
+  const item = {
     id: makeId("clip"),
     assetId: asset.id,
     name: asset.name,
@@ -244,17 +244,19 @@ function addAssetToTimeline(asset) {
     speed: 1,
     muted: false,
     transform: { ...DEFAULT_TRANSFORM },
-  });
+  };
+  state.timeline.push(item);
+  return item;
 }
 
 function addAudioAssetToTrack(asset, trackKey) {
-  if (asset.kind !== "audio") return;
+  if (asset.kind !== "audio") return null;
   const track = state.audioTracks[trackKey];
   if (track.locked) {
     setStatus(`${trackKey} track is locked`);
-    return;
+    return null;
   }
-  track.clips.push({
+  const clip = {
     id: makeId("audio_clip"),
     assetId: asset.id,
     name: asset.name,
@@ -262,7 +264,9 @@ function addAudioAssetToTrack(asset, trackKey) {
     sourceStart: 0,
     duration: roundTime(asset.duration),
     volume: Number(track.volume),
-  });
+  };
+  track.clips.push(clip);
+  return clip;
 }
 
 function render() {
@@ -315,8 +319,8 @@ function renderMedia() {
       const addButton = makeMiniButton("+", `Add ${asset.name}`);
       addButton.addEventListener("click", () => {
         pushHistory();
-        addAssetToTimeline(asset);
-        state.selectedItemId = state.timeline[state.timeline.length - 1].id;
+        const item = addAssetToTimeline(asset);
+        if (item) state.selectedItemId = item.id;
         render();
       });
       actions.appendChild(addButton);
@@ -428,8 +432,8 @@ function renderAudioTimeline() {
       const width = Math.max(160, Math.min(TRACK_PIXEL_WIDTH, (clip.duration / total) * TRACK_PIXEL_WIDTH));
       const pill = document.createElement("div");
       pill.className = `audio-clip-pill ${track.locked ? "locked" : ""}`;
-      pill.style.marginLeft = `${left}px`;
-      pill.style.flexBasis = `${width}px`;
+      pill.style.left = `${left}px`;
+      pill.style.width = `${width}px`;
       pill.title = asset?.name || clip.name;
       pill.innerHTML = `
         <span class="clip-resize-handle left" data-edge="left" aria-hidden="true"></span>
@@ -604,7 +608,7 @@ function playPreviewItem(item, offset, token) {
     applyPreviewTransform(item);
     const video = els.previewVideo;
     video.src = asset.url;
-    video.muted = item.muted;
+    video.muted = item.muted || !shouldPlayVideoTrack();
     video.playbackRate = clipSpeed(item);
     await waitForEvent(video, "loadedmetadata");
     await seekVideo(video, item.start + offset * clipSpeed(item));
@@ -652,7 +656,7 @@ function seekPreview(seconds) {
   const position = timelinePositionForSeconds(seconds);
   const item = state.timeline[position.index];
   if (!item) {
-    renderTransport(0);
+    renderTransport(state.cursorSeconds);
     return;
   }
   const asset = assetForItem(item);
@@ -663,7 +667,7 @@ function seekPreview(seconds) {
   }
   state.selectedItemId = item.id;
   els.previewVideo.src = asset.url;
-  els.previewVideo.muted = item.muted;
+  els.previewVideo.muted = item.muted || !shouldPlayVideoTrack();
   els.previewVideo.playbackRate = clipSpeed(item);
   applyPreviewTransform(item);
   waitForEvent(els.previewVideo, "loadedmetadata")
@@ -971,6 +975,7 @@ function startVideoResize(event, item, edge) {
     id: item.id,
     startX: event.clientX,
     secondsPerPixel: Math.max(projectDuration(), 20) / TRACK_PIXEL_WIDTH,
+    speed: clipSpeed(item),
     originalStart: item.start,
     originalEnd: item.end,
     assetDuration: asset.duration,
@@ -1011,10 +1016,11 @@ function resizeClipFromPointer(event) {
   if (drag.kind === "video") {
     const item = state.timeline.find((candidate) => candidate.id === drag.id);
     if (!item) return;
+    const sourceDelta = roundTime(delta * drag.speed);
     if (drag.edge === "left") {
-      item.start = roundTime(clamp(drag.originalStart + delta, 0, drag.originalEnd - 0.05));
+      item.start = roundTime(clamp(drag.originalStart + sourceDelta, 0, drag.originalEnd - 0.05));
     } else {
-      item.end = roundTime(clamp(drag.originalEnd + delta, drag.originalStart + 0.05, drag.assetDuration));
+      item.end = roundTime(clamp(drag.originalEnd + sourceDelta, drag.originalStart + 0.05, drag.assetDuration));
     }
     renderTimeline();
     renderTransport();
