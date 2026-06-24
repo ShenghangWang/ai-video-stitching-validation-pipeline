@@ -914,6 +914,7 @@ function updateTrackVolume(trackKey, value) {
   const track = state.audioTracks[trackKey];
   track.volume = Number(value);
   for (const clip of track.clips) clip.volume = track.volume;
+  syncActiveAudioPreviewVolumes();
   renderAudioTimeline();
 }
 
@@ -1236,7 +1237,7 @@ async function loadLocalProject() {
 function startAudioPreview(startSeconds, token) {
   stopAudioPreview();
   const startedAt = performance.now() - startSeconds * 1000;
-  for (const track of Object.values(effectiveAudioTracks())) {
+  for (const [trackKey, track] of Object.entries(effectiveAudioTracks())) {
     for (const clip of track.clips) {
       const asset = state.assets.find((candidate) => candidate.id === clip.assetId);
       if (!asset) continue;
@@ -1247,9 +1248,9 @@ function startAudioPreview(startSeconds, token) {
         if (token !== state.playToken) return;
         const audio = document.createElement("audio");
         audio.src = asset.url;
-        audio.volume = clamp(Number(clip.volume ?? track.volume), 0, 1);
+        audio.volume = audioPreviewVolume(trackKey, clip);
         audio.currentTime = clip.sourceStart + Math.max(0, (performance.now() - startedAt) / 1000 - clip.timelineStart);
-        state.audioPreviewElements.push(audio);
+        state.audioPreviewElements.push({ audio, trackKey, clipId: clip.id });
         try {
           await audio.play();
         } catch {
@@ -1265,8 +1266,26 @@ function startAudioPreview(startSeconds, token) {
 function stopAudioPreview() {
   state.audioPreviewTimers.forEach((timer) => window.clearTimeout(timer));
   state.audioPreviewTimers = [];
-  state.audioPreviewElements.forEach((audio) => audio.pause());
+  state.audioPreviewElements.forEach(({ audio }) => audio.pause());
   state.audioPreviewElements = [];
+}
+
+function syncActiveAudioPreviewVolumes() {
+  state.audioPreviewElements = state.audioPreviewElements.filter(({ audio, trackKey, clipId }) => {
+    if (audio.ended) return false;
+    const track = state.audioTracks[trackKey];
+    const clip = track?.clips.find((candidate) => candidate.id === clipId);
+    audio.volume = clip ? audioPreviewVolume(trackKey, clip) : 0;
+    return true;
+  });
+}
+
+function audioPreviewVolume(trackKey, clip) {
+  const track = state.audioTracks[trackKey];
+  if (!track) return 0;
+  const anySolo = state.videoTrack.solo || Object.values(state.audioTracks).some((candidate) => candidate.solo);
+  if (track.muted || (anySolo && !track.solo)) return 0;
+  return clamp(Number(clip.volume ?? track.volume), 0, 1);
 }
 
 function duplicateSelectedItem() {
@@ -1751,6 +1770,7 @@ function toggleVideoMute(itemId) {
 function toggleVideoTrack(key) {
   pushHistory();
   state.videoTrack[key] = !state.videoTrack[key];
+  if (key === "solo") syncActiveAudioPreviewVolumes();
   const labels = {
     locked: state.videoTrack.locked ? "Video track locked" : "Video track unlocked",
     hidden: state.videoTrack.hidden ? "Video track hidden" : "Video track visible",
@@ -1766,6 +1786,7 @@ function toggleAudioTrack(trackKey, key) {
   if (!track) return;
   pushHistory();
   track[key] = !track[key];
+  if (key === "muted" || key === "solo") syncActiveAudioPreviewVolumes();
   const labels = {
     locked: track.locked ? `${trackKey} track locked` : `${trackKey} track unlocked`,
     muted: track.muted ? `${trackKey} muted` : `${trackKey} unmuted`,
