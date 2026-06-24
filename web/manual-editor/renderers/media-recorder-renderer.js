@@ -105,6 +105,10 @@ async function renderVideoClip({ clip, ir, video, context, videoGain, onFirstFra
     if (videoGain) videoGain.gain.value = 0;
     return renderBlankClip({ clip, ir, context, onFirstFrame });
   }
+  if (asset.kind === "image") {
+    if (videoGain) videoGain.gain.value = 0;
+    return renderImageClip({ clip, asset, ir, context, onFirstFrame });
+  }
   if (videoGain) videoGain.gain.value = clip.muted ? 0 : 1;
   video.src = asset.objectUrl;
   video.playbackRate = Number(clip.speed || 1);
@@ -123,6 +127,28 @@ async function renderVideoClip({ clip, ir, video, context, videoGain, onFirstFra
       if (video.currentTime >= clip.sourceStart + (clip.sourceDuration ?? clip.duration) || video.ended) {
         video.pause();
         video.playbackRate = 1;
+        resolve();
+        return;
+      }
+      requestAnimationFrame(draw);
+    };
+    draw();
+  });
+}
+
+async function renderImageClip({ clip, asset, ir, context, onFirstFrame }) {
+  const image = await loadImage(asset.objectUrl);
+  const durationMs = Math.max(0, Number(clip.duration) || 0) * 1000;
+  const startedAt = performance.now();
+  let firstFrameDrawn = false;
+  return new Promise((resolve) => {
+    const draw = () => {
+      if (!firstFrameDrawn) {
+        firstFrameDrawn = true;
+        onFirstFrame();
+      }
+      drawVideoContain(context, image, ir.canvas.width, ir.canvas.height, ir.canvas.background, clip.transform);
+      if (performance.now() - startedAt >= durationMs) {
         resolve();
         return;
       }
@@ -234,6 +260,15 @@ function waitForEvent(target, eventName) {
   });
 }
 
+function loadImage(src) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error("image load failed"));
+    image.src = src;
+  });
+}
+
 function seekVideo(video, seconds) {
   return new Promise((resolve) => {
     if (Math.abs(video.currentTime - seconds) < 0.01) {
@@ -253,8 +288,8 @@ function seekVideo(video, seconds) {
 
 function drawVideoContain(context, video, width, height, background, transform = {}) {
   fillCanvas(context, width, height, background);
-  const sourceWidth = video.videoWidth || width;
-  const sourceHeight = video.videoHeight || height;
+  const sourceWidth = video.videoWidth || video.naturalWidth || width;
+  const sourceHeight = video.videoHeight || video.naturalHeight || height;
   const scale = Math.min(width / sourceWidth, height / sourceHeight);
   const drawWidth = sourceWidth * scale;
   const drawHeight = sourceHeight * scale;

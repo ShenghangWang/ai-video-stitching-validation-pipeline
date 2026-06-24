@@ -67,8 +67,8 @@
           </div>
           <label class="import-drop">
             <span>Import</span>
-            <small>Video / Audio</small>
-            <input id="fileInput" type="file" accept="video/*,audio/*" multiple>
+            <small>Video / Audio / Image</small>
+            <input id="fileInput" type="file" accept="video/*,audio/*,image/png,image/jpeg,.png,.jpg,.jpeg" multiple>
           </label>
           <div id="mediaList" class="media-list"></div>
         </aside>
@@ -78,6 +78,7 @@
             <section class="preview-panel" aria-label="Preview">
               <div class="preview-frame">
                 <video id="previewVideo" playsinline></video>
+                <img id="previewImage" class="hidden" alt="">
                 <div id="emptyPreview" class="empty-preview">Preview</div>
               </div>
               <div class="preview-footer">

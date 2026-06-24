@@ -5,6 +5,7 @@ import { MediaRecorderRenderer } from "./renderers/media-recorder-renderer.js";
 
 const TRACK_PIXEL_WIDTH = 1900;
 const PROJECT_STORE = "manual-editor-project";
+const DEFAULT_IMAGE_DURATION_SECONDS = 5;
 const DEFAULT_TRANSFORM = Object.freeze({
   x: 0,
   y: 0,
@@ -85,6 +86,7 @@ const els = {
   trackArea: document.querySelector(".track-area"),
   durationReadout: document.getElementById("durationReadout"),
   previewVideo: document.getElementById("previewVideo"),
+  previewImage: document.getElementById("previewImage"),
   emptyPreview: document.getElementById("emptyPreview"),
   playButton: document.getElementById("playButton"),
   seekSlider: document.getElementById("seekSlider"),
@@ -145,7 +147,7 @@ els.fileInput.addEventListener("change", async (event) => {
     try {
       const asset = await createAsset(file);
       state.assets.push(asset);
-      if (asset.kind === "video") addAssetToTimeline(asset);
+      if (["video", "image"].includes(asset.kind)) addAssetToTimeline(asset);
     } catch (error) {
       setStatus(`Could not import ${file.name}: ${error.message}`);
     }
@@ -275,6 +277,7 @@ function isFormEditingTarget(target) {
 
 function createAsset(file) {
   if (file.type.startsWith("audio/")) return createAudioAsset(file);
+  if (file.type.startsWith("image/") || /\.(png|jpe?g)$/i.test(file.name)) return createImageAsset(file);
   return createVideoAsset(file);
 }
 
@@ -328,8 +331,32 @@ function createAudioAsset(file) {
   });
 }
 
+function createImageAsset(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const image = new Image();
+    image.onload = () => {
+      resolve({
+        id: makeId("asset"),
+        kind: "image",
+        file,
+        url,
+        name: file.name,
+        duration: DEFAULT_IMAGE_DURATION_SECONDS,
+        width: image.naturalWidth || 0,
+        height: image.naturalHeight || 0,
+      });
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("image metadata read failed"));
+    };
+    image.src = url;
+  });
+}
+
 function addAssetToTimeline(asset) {
-  if (asset.kind !== "video") return null;
+  if (!["video", "image"].includes(asset.kind)) return null;
   if (state.videoTrack.locked) {
     setStatus("Video track is locked");
     return null;
@@ -340,9 +367,9 @@ function addAssetToTimeline(asset) {
     name: asset.name,
     role: "",
     start: 0,
-    end: roundTime(asset.duration),
+    end: roundTime(asset.kind === "image" ? DEFAULT_IMAGE_DURATION_SECONDS : asset.duration),
     speed: 1,
-    muted: false,
+    muted: asset.kind === "image",
     hidden: false,
     transform: { ...DEFAULT_TRANSFORM },
   };
@@ -414,12 +441,12 @@ function renderMedia() {
       <div class="media-kind-badge">${asset.kind}</div>
       <div>
         <div class="media-name" title="${escapeHtml(asset.name)}">${escapeHtml(asset.name)}</div>
-        <div class="media-meta">${asset.kind} | ${formatTime(asset.duration)}${asset.kind === "video" ? ` | ${asset.width}x${asset.height}` : ""}</div>
+        <div class="media-meta">${asset.kind} | ${formatTime(asset.duration)}${["video", "image"].includes(asset.kind) ? ` | ${asset.width}x${asset.height}` : ""}</div>
       </div>
       <div class="media-actions"></div>
     `;
     const actions = row.querySelector(".media-actions");
-    if (asset.kind === "video") {
+    if (["video", "image"].includes(asset.kind)) {
       const addButton = makeMiniButton("+", `Add ${asset.name}`);
       addButton.addEventListener("click", () => {
         pushHistory();
@@ -495,7 +522,7 @@ function renderTimeline() {
       <span class="clip-resize-handle left" data-edge="left" aria-hidden="true"></span>
       <div>
         <div class="timeline-name" title="${escapeHtml(item.name)}">${escapeHtml(item.name)}</div>
-        <div class="timeline-meta">${formatTime(clipTimelineDuration(item))}${clipSpeed(item) !== 1 ? ` | ${clipSpeed(item)}x` : ""}${item.muted ? " | muted" : ""}${item.hidden ? " | hidden" : ""}</div>
+        <div class="timeline-meta">${formatTime(clipTimelineDuration(item))}${asset?.kind === "video" && clipSpeed(item) !== 1 ? ` | ${clipSpeed(item)}x` : ""}${asset?.kind === "video" && item.muted ? " | muted" : ""}${item.hidden ? " | hidden" : ""}</div>
       </div>
       <div class="timeline-meta">${escapeHtml(item.role || asset?.name || "clip")}</div>
       <span class="clip-resize-handle right" data-edge="right" aria-hidden="true"></span>
@@ -920,7 +947,13 @@ function playPreviewItem(item, offset, token) {
       resolve();
       return;
     }
+    if (asset.kind === "image") {
+      await playStillPreviewItem(item, asset, offset, token);
+      resolve();
+      return;
+    }
     const video = els.previewVideo;
+    hidePreviewImage();
     video.src = asset.url;
     video.muted = shouldMuteVideoItem(item);
     video.playbackRate = clipSpeed(item);
@@ -957,6 +990,7 @@ function playHiddenPreviewItem(item, offset, token) {
   els.previewVideo.pause();
   els.previewVideo.removeAttribute("src");
   els.previewVideo.load();
+  hidePreviewImage();
   const remainingMs = Math.max(0, clipTimelineDuration(item) - offset) * 1000;
   const startedAt = performance.now();
   return new Promise((resolve) => {
@@ -969,6 +1003,29 @@ function playHiddenPreviewItem(item, offset, token) {
       const timelineSeconds = secondsBeforeItem(item.id) + offset + elapsedSeconds;
       renderTransport(timelineSeconds);
       if (elapsedSeconds * 1000 >= remainingMs) {
+        resolve();
+        return;
+      }
+      requestAnimationFrame(tick);
+    };
+    tick();
+  });
+}
+
+function playStillPreviewItem(item, asset, offset, token) {
+  showPreviewImage(item, asset);
+  const remainingMs = Math.max(0, clipTimelineDuration(item) - offset) * 1000;
+  const startedAt = performance.now();
+  return new Promise((resolve) => {
+    const tick = () => {
+      if (token !== state.playToken || !state.isPlaying) {
+        resolve();
+        return;
+      }
+      const elapsedSeconds = (performance.now() - startedAt) / 1000;
+      const timelineSeconds = secondsBeforeItem(item.id) + offset + elapsedSeconds;
+      renderTransport(timelineSeconds);
+      if (performance.now() - startedAt >= remainingMs) {
         resolve();
         return;
       }
@@ -1010,9 +1067,16 @@ function seekPreview(seconds) {
     els.previewVideo.pause();
     els.previewVideo.removeAttribute("src");
     els.previewVideo.load();
+    hidePreviewImage();
     renderTransport(seconds);
     return;
   }
+  if (asset.kind === "image") {
+    showPreviewImage(item, asset);
+    renderTransport(seconds);
+    return;
+  }
+  hidePreviewImage();
   els.previewVideo.src = asset.url;
   els.previewVideo.muted = shouldMuteVideoItem(item);
   els.previewVideo.playbackRate = clipSpeed(item);
@@ -1768,7 +1832,8 @@ function shouldPlayVideoTrack() {
 }
 
 function shouldMuteVideoItem(item) {
-  return Boolean(item?.muted || item?.hidden || state.videoTrack.muted || !shouldPlayVideoTrack());
+  const asset = item ? assetForItem(item) : null;
+  return Boolean(asset?.kind === "image" || item?.muted || item?.hidden || state.videoTrack.muted || !shouldPlayVideoTrack());
 }
 
 function effectiveVideoTimeline() {
@@ -1800,12 +1865,15 @@ function applyTrackVisibility() {
 }
 
 function applyPreviewVisibility(item) {
-  els.previewVideo.classList.toggle("track-hidden", !shouldPlayVideoTrack() || Boolean(item?.hidden));
+  const hidden = !shouldPlayVideoTrack() || Boolean(item?.hidden);
+  els.previewVideo.classList.toggle("track-hidden", hidden);
+  els.previewImage.classList.toggle("track-hidden", hidden);
 }
 
 function currentTimelineSeconds() {
   const item = state.timeline.find((clip) => clip.id === state.activeItemId);
   if (!item) return state.cursorSeconds;
+  if (assetForItem(item)?.kind === "image") return state.cursorSeconds;
   return secondsBeforeItem(item.id) + Math.max(0, (els.previewVideo.currentTime - item.start) / clipSpeed(item));
 }
 
@@ -1870,8 +1938,26 @@ function applyPreviewTransform(item) {
   const transform = normalizeTransform(item?.transform);
   const scaleX = transform.flipX ? -transform.scale : transform.scale;
   const scaleY = transform.flipY ? -transform.scale : transform.scale;
-  els.previewVideo.style.transform = `translate(${transform.x}px, ${transform.y}px) scale(${scaleX}, ${scaleY}) rotate(${transform.rotation}deg)`;
+  const value = `translate(${transform.x}px, ${transform.y}px) scale(${scaleX}, ${scaleY}) rotate(${transform.rotation}deg)`;
+  els.previewVideo.style.transform = value;
+  els.previewImage.style.transform = value;
   els.previewVideo.style.opacity = String(transform.opacity);
+  els.previewImage.style.opacity = String(transform.opacity);
+}
+
+function showPreviewImage(item, asset) {
+  els.previewVideo.pause();
+  els.previewVideo.removeAttribute("src");
+  els.previewVideo.load();
+  els.previewImage.src = asset.url;
+  els.previewImage.classList.remove("hidden");
+  applyPreviewTransform(item);
+  applyPreviewVisibility(item);
+}
+
+function hidePreviewImage() {
+  els.previewImage.removeAttribute("src");
+  els.previewImage.classList.add("hidden");
 }
 
 function waitForEvent(target, eventName) {

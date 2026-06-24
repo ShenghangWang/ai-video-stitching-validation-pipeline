@@ -130,3 +130,41 @@ assert.ok(jobWarnings.some((warning) => warning.includes("Independent narration/
 assert.ok(jobWarnings.some((warning) => warning.includes("trim data")));
 assert.ok(jobWarnings.some((warning) => warning.includes("muted")));
 assert.ok(jobWarnings.some((warning) => warning.includes("hidden")));
+
+const imageAssets = [
+  {
+    id: "image_asset",
+    kind: "image",
+    name: "frame.png",
+    duration: 5,
+    width: 1024,
+    height: 768,
+    url: "blob:image",
+    file: { name: "frame.png" },
+  },
+];
+const imageTimeline = [
+  {
+    id: "image_clip",
+    assetId: "image_asset",
+    name: "Still frame",
+    role: "reference",
+    start: 0,
+    end: 5,
+    speed: 1,
+    muted: true,
+    hidden: false,
+    transform: { x: 0, y: 0, scale: 1, rotation: 0, opacity: 1, flipX: false, flipY: false },
+  },
+];
+const emptyAudioTracks = {
+  narration: { id: "narration_track", role: "narration", volume: 1, clips: [] },
+  music: { id: "music_track", role: "music", volume: 0.35, clips: [] },
+};
+const imageProject = buildEditorProject({ assets: imageAssets, timeline: imageTimeline, audioTracks: emptyAudioTracks });
+assert.equal(imageProject.assets[0].kind, "image");
+assert.equal(imageProject.timeline.videoTracks[0].clips[0].duration, 5);
+const { ir: imageIr, errors: imageErrors } = buildRendererTimeline({ assets: imageAssets, timeline: imageTimeline, audioTracks: emptyAudioTracks });
+assert.deepEqual(imageErrors, []);
+assert.equal(imageIr.assets.image_asset.kind, "image");
+assert.equal(imageIr.tracks[0].clips[0].duration, 5);

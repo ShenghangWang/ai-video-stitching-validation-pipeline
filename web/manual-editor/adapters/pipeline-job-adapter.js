@@ -21,6 +21,10 @@ export function buildPipelineJob({ assets, timeline, audioTracks = {}, settings 
       warnings.push(`Clip "${item.name}" is hidden in the browser editor, but the current Python pipeline does not preserve hidden clips.`);
     }
 
+    if (asset?.kind === "image") {
+      warnings.push(`Clip "${item.name}" is a still image that is supported by the browser editor, but the current Python pipeline may expect video input.`);
+    }
+
     if (item.transform && hasNonDefaultTransform(item.transform)) {
       warnings.push(`Clip "${item.name}" has transform data that the current Python pipeline does not apply.`);
     }

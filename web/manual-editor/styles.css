@@ -417,6 +417,22 @@ h2 {
   opacity: 0.72;
 }
 
+.media-image {
+  background:
+    linear-gradient(180deg, transparent 0 36%, rgba(0, 0, 0, 0.72) 100%),
+    linear-gradient(135deg, #2c3425, #171b14);
+}
+
+.media-image::before {
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.12), transparent 42%),
+    linear-gradient(45deg, rgba(255, 255, 255, 0.08) 25%, transparent 25% 75%, rgba(255, 255, 255, 0.08) 75%),
+    linear-gradient(45deg, rgba(255, 255, 255, 0.08) 25%, transparent 25% 75%, rgba(255, 255, 255, 0.08) 75%);
+  background-position: 0 0, 0 0, 10px 10px;
+  background-size: auto, 20px 20px, 20px 20px;
+  opacity: 0.62;
+}
+
 .media-kind-badge {
   position: absolute;
   top: 7px;
@@ -511,7 +527,8 @@ h2 {
   content: none;
 }
 
-#previewVideo {
+#previewVideo,
+#previewImage {
   position: relative;
   z-index: 1;
   width: min(82%, 920px);
@@ -524,7 +541,12 @@ h2 {
   transform-origin: center;
 }
 
-#previewVideo.track-hidden {
+#previewImage {
+  display: block;
+}
+
+#previewVideo.track-hidden,
+#previewImage.track-hidden {
   visibility: hidden;
 }
 
