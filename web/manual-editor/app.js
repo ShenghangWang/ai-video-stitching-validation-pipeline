@@ -9,6 +9,11 @@ const DEFAULT_IMAGE_DURATION_SECONDS = 5;
 const VIDEO_TRACK_HEIGHT = 86;
 const AUDIO_LANE_HEIGHT = 42;
 const AUDIO_ROW_PADDING = 14;
+const DEFAULT_SOURCE_AUDIO = Object.freeze({
+  volume: 1,
+  fadeIn: 0,
+  fadeOut: 0,
+});
 const DEFAULT_TRANSFORM = Object.freeze({
   x: 0,
   y: 0,
@@ -131,6 +136,12 @@ const els = {
   clipRotationNumber: document.getElementById("clipRotationNumber"),
   clipOpacity: document.getElementById("clipOpacity"),
   clipOpacityNumber: document.getElementById("clipOpacityNumber"),
+  clipAudioVolume: document.getElementById("clipAudioVolume"),
+  clipAudioVolumeNumber: document.getElementById("clipAudioVolumeNumber"),
+  clipAudioFadeIn: document.getElementById("clipAudioFadeIn"),
+  clipAudioFadeInNumber: document.getElementById("clipAudioFadeInNumber"),
+  clipAudioFadeOut: document.getElementById("clipAudioFadeOut"),
+  clipAudioFadeOutNumber: document.getElementById("clipAudioFadeOutNumber"),
   clipSpeedNumber: document.getElementById("clipSpeedNumber"),
   flipHButton: document.getElementById("flipHButton"),
   flipVButton: document.getElementById("flipVButton"),
@@ -245,6 +256,12 @@ for (const input of [
   els.clipRotationNumber,
   els.clipOpacity,
   els.clipOpacityNumber,
+  els.clipAudioVolume,
+  els.clipAudioVolumeNumber,
+  els.clipAudioFadeIn,
+  els.clipAudioFadeInNumber,
+  els.clipAudioFadeOut,
+  els.clipAudioFadeOutNumber,
 ]) {
   input.addEventListener("input", updateSelectedFromForm);
 }
@@ -378,6 +395,7 @@ function addAssetToTimeline(asset) {
     muted: asset.kind === "image",
     hidden: false,
     transform: { ...DEFAULT_TRANSFORM },
+    audio: { ...DEFAULT_SOURCE_AUDIO },
   };
   item.trackIndex = firstAvailableVideoTrackIndex(item.timelineStart, clipTimelineDuration(item));
   state.timeline.push(item);
@@ -806,6 +824,7 @@ function renderInspector() {
 
   const asset = assetForItem(item);
   const transform = normalizeTransform(item.transform);
+  const sourceAudio = normalizeSourceAudio(item.audio);
   els.clipName.value = item.name;
   els.clipRole.value = item.role;
   els.clipStart.max = asset ? String(asset.duration) : "";
@@ -815,6 +834,11 @@ function renderInspector() {
   els.clipSpeed.value = String(clipSpeed(item));
   els.clipSpeedNumber.value = String(clipSpeed(item));
   els.clipMuted.checked = item.muted;
+  const audioFadeMax = String(Math.max(10, Math.ceil(clipTimelineDuration(item))));
+  els.clipAudioFadeIn.max = audioFadeMax;
+  els.clipAudioFadeInNumber.max = audioFadeMax;
+  els.clipAudioFadeOut.max = audioFadeMax;
+  els.clipAudioFadeOutNumber.max = audioFadeMax;
   els.clipScale.value = String(transform.scale);
   els.clipScaleNumber.value = String(Math.round(transform.scale * 100));
   els.clipX.value = String(transform.x);
@@ -823,6 +847,12 @@ function renderInspector() {
   els.clipRotationNumber.value = String(transform.rotation);
   els.clipOpacity.value = String(transform.opacity);
   els.clipOpacityNumber.value = String(Math.round(transform.opacity * 100));
+  els.clipAudioVolume.value = String(sourceAudio.volume);
+  els.clipAudioVolumeNumber.value = String(Math.round(sourceAudio.volume * 100));
+  els.clipAudioFadeIn.value = String(sourceAudio.fadeIn);
+  els.clipAudioFadeInNumber.value = String(sourceAudio.fadeIn);
+  els.clipAudioFadeOut.value = String(sourceAudio.fadeOut);
+  els.clipAudioFadeOutNumber.value = String(sourceAudio.fadeOut);
   els.flipHButton.classList.toggle("active", transform.flipX);
   els.flipVButton.classList.toggle("active", transform.flipY);
   els.narrationVolume.value = String(state.audioTracks.narration.volume);
@@ -832,7 +862,11 @@ function renderInspector() {
 }
 
 function renderInspectorTabs() {
+  const item = selectedItem();
+  const asset = item ? assetForItem(item) : null;
+  if (state.inspectorTab === "audio" && asset?.kind !== "video") state.inspectorTab = "position";
   for (const tab of Array.from(els.inspectorTabs.querySelectorAll("[data-inspector-tab]"))) {
+    tab.classList.toggle("hidden", tab.dataset.inspectorTab === "audio" && asset?.kind !== "video");
     tab.classList.toggle("active", tab.dataset.inspectorTab === state.inspectorTab);
   }
   for (const panel of Array.from(els.clipForm.querySelectorAll("[data-panel]"))) {
@@ -873,8 +907,10 @@ function updateSelectedFromForm() {
     flipX: currentTransform.flipX,
     flipY: currentTransform.flipY,
   };
+  item.audio = readSourceAudioValue(item);
   syncInspectorControlValues(item);
   applyPreviewTransform(item);
+  syncActiveVideoPreviewAudio();
   renderTimeline();
   renderTransport();
 }
@@ -907,8 +943,27 @@ function readOpacityValue() {
   return roundTime(clamp(Number(els.clipOpacity.value) || 1, 0, 1));
 }
 
+function readSourceAudioValue(item) {
+  const duration = clipTimelineDuration(item);
+  const volume = document.activeElement === els.clipAudioVolumeNumber
+    ? clamp((Number(els.clipAudioVolumeNumber.value) || 0) / 100, 0, 1)
+    : clamp(Number(els.clipAudioVolume.value) || 0, 0, 1);
+  const fadeIn = document.activeElement === els.clipAudioFadeInNumber
+    ? Number(els.clipAudioFadeInNumber.value) || 0
+    : Number(els.clipAudioFadeIn.value) || 0;
+  const fadeOut = document.activeElement === els.clipAudioFadeOutNumber
+    ? Number(els.clipAudioFadeOutNumber.value) || 0
+    : Number(els.clipAudioFadeOut.value) || 0;
+  return {
+    volume: roundTime(clamp(volume, 0, 1)),
+    fadeIn: roundTime(clamp(fadeIn, 0, duration)),
+    fadeOut: roundTime(clamp(fadeOut, 0, duration)),
+  };
+}
+
 function syncInspectorControlValues(item) {
   const transform = normalizeTransform(item.transform);
+  const sourceAudio = normalizeSourceAudio(item.audio);
   els.clipSpeed.value = String(clipSpeed(item));
   els.clipSpeedNumber.value = String(clipSpeed(item));
   els.clipScale.value = String(transform.scale);
@@ -917,6 +972,12 @@ function syncInspectorControlValues(item) {
   els.clipRotationNumber.value = String(transform.rotation);
   els.clipOpacity.value = String(transform.opacity);
   els.clipOpacityNumber.value = String(Math.round(transform.opacity * 100));
+  els.clipAudioVolume.value = String(sourceAudio.volume);
+  els.clipAudioVolumeNumber.value = String(Math.round(sourceAudio.volume * 100));
+  els.clipAudioFadeIn.value = String(sourceAudio.fadeIn);
+  els.clipAudioFadeInNumber.value = String(sourceAudio.fadeIn);
+  els.clipAudioFadeOut.value = String(sourceAudio.fadeOut);
+  els.clipAudioFadeOutNumber.value = String(sourceAudio.fadeOut);
   els.flipHButton.classList.toggle("active", transform.flipX);
   els.flipVButton.classList.toggle("active", transform.flipY);
 }
@@ -964,6 +1025,9 @@ function resetSelectedInspectorAttributes() {
       ...normalizeTransform(item.transform),
       opacity: DEFAULT_TRANSFORM.opacity,
     };
+  } else if (state.inspectorTab === "audio") {
+    item.audio = { ...DEFAULT_SOURCE_AUDIO };
+    syncActiveVideoPreviewAudio();
   }
   render();
   setStatus("Attributes reset");
@@ -987,6 +1051,7 @@ async function playPreview(startSeconds = currentTimelineSeconds()) {
     state.cursorSeconds = timelineSeconds;
     renderTransport(timelineSeconds);
     await syncVideoPreviewAt(timelineSeconds, token);
+    syncActiveVideoPreviewAudio();
     if (timelineSeconds >= total - 0.01) {
       stopPreview(false);
       return;
@@ -1032,6 +1097,7 @@ function playPreviewItem(item, offset, token) {
     hidePreviewImage();
     video.src = asset.url;
     video.muted = shouldMuteVideoItem(item);
+    video.volume = sourceAudioGainAt(item, offset);
     video.playbackRate = clipSpeed(item);
     await waitForEvent(video, "loadedmetadata");
     await seekVideo(video, item.start + offset * clipSpeed(item));
@@ -1051,6 +1117,7 @@ function playPreviewItem(item, offset, token) {
       const timelineSeconds = secondsBeforeItem(item.id) + Math.max(0, (video.currentTime - item.start) / clipSpeed(item));
       state.cursorSeconds = timelineSeconds;
       renderTransport(timelineSeconds);
+      video.volume = sourceAudioGainAt(item, Math.max(0, timelineSeconds - videoTimelineStart(item)));
       if (video.currentTime >= item.end || video.ended) {
         video.pause();
         resolve();
@@ -1092,6 +1159,7 @@ async function syncVideoPreviewAt(seconds, token) {
   const video = els.previewVideo;
   video.src = asset.url;
   video.muted = shouldMuteVideoItem(item);
+  video.volume = sourceAudioGainAt(item, offset);
   video.playbackRate = clipSpeed(item);
   await waitForEvent(video, "loadedmetadata");
   if (token !== state.playToken || state.activeItemId !== item.id) return;
@@ -1198,6 +1266,7 @@ function seekPreview(seconds) {
   hidePreviewImage();
   els.previewVideo.src = asset.url;
   els.previewVideo.muted = shouldMuteVideoItem(item);
+  els.previewVideo.volume = sourceAudioGainAt(item, position.offset);
   els.previewVideo.playbackRate = clipSpeed(item);
   applyPreviewTransform(item);
   waitForEvent(els.previewVideo, "loadedmetadata")
@@ -1366,6 +1435,7 @@ function syncActiveVideoPreviewAudio() {
   const item = state.timeline.find((candidate) => candidate.id === state.activeItemId);
   if (!item) return;
   els.previewVideo.muted = shouldMuteVideoItem(item);
+  els.previewVideo.volume = sourceAudioGainAt(item, Math.max(0, state.cursorSeconds - videoTimelineStart(item)));
 }
 
 function duplicateSelectedItem() {
@@ -2204,6 +2274,26 @@ function clipSpeed(item) {
 
 function clipTimelineDuration(item) {
   return roundTime(Math.max(0, item.end - item.start) / clipSpeed(item));
+}
+
+function normalizeSourceAudio(audio = {}) {
+  return {
+    volume: roundTime(clamp(Number(audio.volume ?? DEFAULT_SOURCE_AUDIO.volume), 0, 1)),
+    fadeIn: roundTime(Math.max(0, Number(audio.fadeIn ?? DEFAULT_SOURCE_AUDIO.fadeIn) || 0)),
+    fadeOut: roundTime(Math.max(0, Number(audio.fadeOut ?? DEFAULT_SOURCE_AUDIO.fadeOut) || 0)),
+  };
+}
+
+function sourceAudioGainAt(item, offsetSeconds) {
+  const audio = normalizeSourceAudio(item?.audio);
+  const duration = clipTimelineDuration(item);
+  const offset = clamp(Number(offsetSeconds) || 0, 0, duration);
+  const fadeInGain = audio.fadeIn > 0 ? clamp(offset / audio.fadeIn, 0, 1) : 1;
+  const fadeOutStart = Math.max(0, duration - audio.fadeOut);
+  const fadeOutGain = audio.fadeOut > 0 && offset > fadeOutStart
+    ? clamp((duration - offset) / audio.fadeOut, 0, 1)
+    : 1;
+  return roundTime(clamp(audio.volume * Math.min(fadeInGain, fadeOutGain), 0, 1));
 }
 
 function secondsFromTrackPoint(clientX) {

@@ -47,6 +47,11 @@ const timeline = [
     speed: 2,
     muted: true,
     hidden: true,
+    audio: {
+      volume: 0.72,
+      fadeIn: 1.2,
+      fadeOut: 0.8,
+    },
     transform: {
       x: 12,
       y: -8,
@@ -104,6 +109,9 @@ assert.equal(project.timeline.videoTracks[0].clips[0].transform.flipX, true);
 assert.equal(project.timeline.videoTracks[0].clips[0].sourceDuration, 6);
 assert.equal(project.timeline.videoTracks[0].clips[0].duration, 3);
 assert.equal(project.timeline.videoTracks[0].clips[0].speed, 2);
+assert.equal(project.timeline.videoTracks[0].clips[0].audio.volume, 0.72);
+assert.equal(project.timeline.videoTracks[0].clips[0].audio.fadeIn, 1.2);
+assert.equal(project.timeline.videoTracks[0].clips[0].audio.fadeOut, 0.8);
 assert.equal(project.timeline.audioTracks.length, 2);
 assert.equal(project.timeline.duration, 9);
 
@@ -120,6 +128,9 @@ assert.equal(ir.tracks[0].clips[0].sourceDuration, 6);
 assert.equal(ir.tracks[0].clips[0].duration, 3);
 assert.equal(ir.tracks[0].clips[0].speed, 2);
 assert.equal(ir.tracks[0].clips[0].hidden, true);
+assert.equal(ir.tracks[0].clips[0].audio.volume, 0.72);
+assert.equal(ir.tracks[0].clips[0].audio.fadeIn, 1.2);
+assert.equal(ir.tracks[0].clips[0].audio.fadeOut, 0.8);
 
 const multiVideoTimeline = [
   {

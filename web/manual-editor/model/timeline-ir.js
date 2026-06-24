@@ -35,6 +35,7 @@ export function buildRendererTimeline({ assets, timeline, audioTracks, settings 
       speed: clipSpeed(item),
       muted: Boolean(item.muted),
       hidden: Boolean(item.hidden),
+      audio: normalizeSourceAudio(item.audio),
       transform: item.transform || {
         x: 0,
         y: 0,
@@ -137,6 +138,14 @@ function clipSpeed(item) {
 
 function clipTimelineDuration(item) {
   return roundTime(Math.max(0, item.end - item.start) / clipSpeed(item));
+}
+
+function normalizeSourceAudio(audio = {}) {
+  return {
+    volume: roundTime(Math.min(Math.max(Number(audio.volume ?? 1), 0), 1)),
+    fadeIn: roundTime(Math.max(0, Number(audio.fadeIn ?? 0) || 0)),
+    fadeOut: roundTime(Math.max(0, Number(audio.fadeOut ?? 0) || 0)),
+  };
 }
 
 function roundTime(value) {

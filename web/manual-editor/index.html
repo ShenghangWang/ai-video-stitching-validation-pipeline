@@ -96,6 +96,7 @@
             <aside class="inspector" aria-label="Clip inspector">
               <div class="inspector-tabs hidden">
                 <button class="tab active" type="button" data-inspector-tab="position">Position & Scale</button>
+                <button class="tab" type="button" data-inspector-tab="audio">Audio</button>
                 <button class="tab" type="button" data-inspector-tab="speed">Speed</button>
                 <button class="tab" type="button" data-inspector-tab="blend">Blend</button>
                 <button class="tab" type="button" data-inspector-tab="mask">Mask</button>
@@ -155,6 +156,38 @@
                       <button id="flipHButton" type="button" aria-label="Flip horizontal">↔</button>
                       <button id="flipVButton" type="button" aria-label="Flip vertical">↕</button>
                     </div>
+                  </div>
+                </div>
+
+                <div class="inspector-panel hidden" data-panel="audio">
+                  <div class="property-row">
+                    <span class="property-label">Volume</span>
+                    <input id="clipAudioVolume" class="property-slider" type="range" min="0" max="1" step="0.01" value="1" aria-label="Source audio volume">
+                    <div class="number-stepper percent-stepper">
+                      <input id="clipAudioVolumeNumber" type="number" min="0" max="100" step="1" value="100" aria-label="Source audio volume percent">
+                      <span>%</span>
+                    </div>
+                    <button class="keyframe-button" type="button" aria-label="Audio volume keyframe">◇</button>
+                  </div>
+
+                  <div class="property-row">
+                    <span class="property-label">Fade in</span>
+                    <input id="clipAudioFadeIn" class="property-slider" type="range" min="0" max="10" step="0.1" value="0" aria-label="Source audio fade in">
+                    <div class="number-stepper">
+                      <input id="clipAudioFadeInNumber" type="number" min="0" max="10" step="0.1" value="0" aria-label="Source audio fade in seconds">
+                      <span>s</span>
+                    </div>
+                    <button class="keyframe-button" type="button" aria-label="Audio fade in keyframe">◇</button>
+                  </div>
+
+                  <div class="property-row">
+                    <span class="property-label">Fade out</span>
+                    <input id="clipAudioFadeOut" class="property-slider" type="range" min="0" max="10" step="0.1" value="0" aria-label="Source audio fade out">
+                    <div class="number-stepper">
+                      <input id="clipAudioFadeOutNumber" type="number" min="0" max="10" step="0.1" value="0" aria-label="Source audio fade out seconds">
+                      <span>s</span>
+                    </div>
+                    <button class="keyframe-button" type="button" aria-label="Audio fade out keyframe">◇</button>
                   </div>
                 </div>
 

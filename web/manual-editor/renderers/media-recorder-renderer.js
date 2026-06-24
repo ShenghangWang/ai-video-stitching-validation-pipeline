@@ -111,7 +111,7 @@ async function renderVideoClip({ clip, sourceOffset = 0, duration = clip.duratio
     if (videoGain) videoGain.gain.value = 0;
     return renderImageClip({ clip: { ...clip, duration }, asset, ir, context, onFirstFrame });
   }
-  if (videoGain) videoGain.gain.value = clip.muted ? 0 : 1;
+  if (videoGain) videoGain.gain.value = clip.muted ? 0 : sourceAudioGainAt(clip, sourceOffset);
   video.src = asset.objectUrl;
   video.playbackRate = Number(clip.speed || 1);
   await waitForEvent(video, "loadedmetadata");
@@ -128,6 +128,8 @@ async function renderVideoClip({ clip, sourceOffset = 0, duration = clip.duratio
         firstFrameDrawn = true;
         onFirstFrame();
       }
+      const elapsedSeconds = (performance.now() - startedAt) / 1000;
+      if (videoGain) videoGain.gain.value = clip.muted ? 0 : sourceAudioGainAt(clip, sourceOffset + elapsedSeconds);
       drawVideoContain(context, video, ir.canvas.width, ir.canvas.height, ir.canvas.background, clip.transform);
       if (performance.now() - startedAt >= duration * 1000 || video.ended) {
         video.pause();
@@ -179,6 +181,26 @@ function topVideoClipAt(clips, seconds) {
       if (Number(left.timelineStart || 0) !== Number(right.timelineStart || 0)) return Number(right.timelineStart || 0) - Number(left.timelineStart || 0);
       return Number(right.trackZIndex) - Number(left.trackZIndex);
     })[0] || null;
+}
+
+function sourceAudioGainAt(clip, offsetSeconds) {
+  const audio = normalizeSourceAudio(clip.audio);
+  const duration = Number(clip.duration) || 0;
+  const offset = Math.min(Math.max(Number(offsetSeconds) || 0, 0), duration);
+  const fadeInGain = audio.fadeIn > 0 ? Math.min(Math.max(offset / audio.fadeIn, 0), 1) : 1;
+  const fadeOutStart = Math.max(0, duration - audio.fadeOut);
+  const fadeOutGain = audio.fadeOut > 0 && offset > fadeOutStart
+    ? Math.min(Math.max((duration - offset) / audio.fadeOut, 0), 1)
+    : 1;
+  return Math.min(Math.max(audio.volume * Math.min(fadeInGain, fadeOutGain), 0), 1);
+}
+
+function normalizeSourceAudio(audio = {}) {
+  return {
+    volume: Math.min(Math.max(Number(audio.volume ?? 1), 0), 1),
+    fadeIn: Math.max(0, Number(audio.fadeIn ?? 0) || 0),
+    fadeOut: Math.max(0, Number(audio.fadeOut ?? 0) || 0),
+  };
 }
 
 async function renderImageClip({ clip, asset, ir, context, onFirstFrame }) {
