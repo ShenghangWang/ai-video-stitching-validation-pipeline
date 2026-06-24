@@ -40,6 +40,7 @@ const state = {
   future: [],
   restoringHistory: false,
   resizeDrag: null,
+  videoMoveDrag: null,
   linkedSelection: false,
   showWaveforms: true,
   copiedVideoItem: null,
@@ -223,8 +224,8 @@ els.trackArea.addEventListener("click", (event) => {
   if (event.target.closest(".timeline-item, .audio-clip-pill, button")) return;
   seekPreview(secondsFromTrackPoint(event.clientX));
 });
-document.addEventListener("pointermove", resizeClipFromPointer);
-document.addEventListener("pointerup", stopClipResize);
+document.addEventListener("pointermove", handleTimelinePointerMove);
+document.addEventListener("pointerup", stopTimelinePointerInteraction);
 document.addEventListener("click", closeContextMenu);
 document.addEventListener("keydown", handleKeyboardShortcuts);
 
@@ -543,8 +544,7 @@ function renderTimeline() {
     card.style.left = `${left}px`;
     card.style.top = `${(Number(item.trackIndex) || 0) * VIDEO_TRACK_HEIGHT + 12}px`;
     card.style.width = `${width}px`;
-    card.draggable = true;
-    card.draggable = !state.videoTrack.locked;
+    card.draggable = false;
     card.innerHTML = `
       <span class="clip-resize-handle left" data-edge="left" aria-hidden="true"></span>
       <div>
@@ -559,19 +559,7 @@ function renderTimeline() {
       render();
     });
     card.addEventListener("contextmenu", (event) => openVideoContextMenu(event, item));
-    card.addEventListener("dragstart", (event) => {
-      if (state.videoTrack.locked) {
-        event.preventDefault();
-        setStatus("Video track is locked");
-        return;
-      }
-      event.dataTransfer.setData("text/plain", item.id);
-    });
-    card.addEventListener("dragover", (event) => event.preventDefault());
-    card.addEventListener("drop", (event) => {
-      event.preventDefault();
-      moveVideoItemToTrack(event.dataTransfer.getData("text/plain"), Number(item.trackIndex) || 0);
-    });
+    card.addEventListener("pointerdown", (event) => startVideoMove(event, item));
     for (const handle of card.querySelectorAll(".clip-resize-handle")) {
       handle.addEventListener("pointerdown", (event) => startVideoResize(event, item, handle.dataset.edge));
     }
@@ -1711,6 +1699,29 @@ function moveVideoItemToTrack(itemId, trackIndex) {
   setStatus(`Moved clip to V${nextTrackIndex + 1}`);
 }
 
+function startVideoMove(event, item) {
+  if (event.button !== 0 || event.target.closest(".clip-resize-handle, button")) return;
+  if (state.videoTrack.locked) {
+    setStatus("Video track is locked");
+    return;
+  }
+  event.preventDefault();
+  event.stopPropagation();
+  state.selectedItemId = item.id;
+  state.videoMoveDrag = {
+    id: item.id,
+    startX: event.clientX,
+    startY: event.clientY,
+    secondsPerPixel: Math.max(projectDuration(), 20) / TRACK_PIXEL_WIDTH,
+    originalTimelineStart: videoTimelineStart(item),
+    originalTrackIndex: Number(item.trackIndex) || 0,
+    hasHistory: false,
+    moved: false,
+  };
+  document.body.classList.add("is-moving-clip");
+  render();
+}
+
 function startVideoResize(event, item, edge) {
   event.preventDefault();
   event.stopPropagation();
@@ -1763,6 +1774,33 @@ function startAudioResize(event, trackKey, clip, edge) {
   document.body.classList.add("is-resizing-clip");
 }
 
+function handleTimelinePointerMove(event) {
+  moveVideoFromPointer(event);
+  resizeClipFromPointer(event);
+}
+
+function moveVideoFromPointer(event) {
+  if (!state.videoMoveDrag) return;
+  const drag = state.videoMoveDrag;
+  const item = state.timeline.find((candidate) => candidate.id === drag.id);
+  if (!item) return;
+  const deltaX = event.clientX - drag.startX;
+  const deltaY = event.clientY - drag.startY;
+  if (!drag.hasHistory && Math.abs(deltaX) < 3 && Math.abs(deltaY) < 3) return;
+  if (!drag.hasHistory) {
+    pushHistory();
+    drag.hasHistory = true;
+  }
+  drag.moved = true;
+  const timelineDelta = roundTime(deltaX * drag.secondsPerPixel);
+  item.timelineStart = roundTime(Math.max(0, drag.originalTimelineStart + timelineDelta));
+  item.trackIndex = Math.max(0, drag.originalTrackIndex + Math.round(deltaY / VIDEO_TRACK_HEIGHT));
+  renderTrackLabels();
+  renderTimeline();
+  renderTransport();
+  renderInspector();
+}
+
 function resizeClipFromPointer(event) {
   if (!state.resizeDrag) return;
   const drag = state.resizeDrag;
@@ -1802,10 +1840,14 @@ function resizeClipFromPointer(event) {
   renderTransport();
 }
 
-function stopClipResize() {
-  if (!state.resizeDrag) return;
+function stopTimelinePointerInteraction() {
+  const wasMoving = Boolean(state.videoMoveDrag);
+  const wasResizing = Boolean(state.resizeDrag);
+  state.videoMoveDrag = null;
   state.resizeDrag = null;
+  if (!wasMoving && !wasResizing) return;
   document.body.classList.remove("is-resizing-clip");
+  document.body.classList.remove("is-moving-clip");
   render();
 }
 
@@ -2147,8 +2189,8 @@ function videoItemAtTime(seconds, options = {}) {
     return seconds >= videoTimelineStart(item) && seconds < videoTimelineEnd(item);
   });
   return candidates.sort((left, right) => {
-    if ((Number(left.trackIndex) || 0) !== (Number(right.trackIndex) || 0)) return (Number(right.trackIndex) || 0) - (Number(left.trackIndex) || 0);
-    return videoTimelineStart(right) - videoTimelineStart(left);
+    if (videoTimelineStart(left) !== videoTimelineStart(right)) return videoTimelineStart(right) - videoTimelineStart(left);
+    return (Number(right.trackIndex) || 0) - (Number(left.trackIndex) || 0);
   })[0] || null;
 }
 

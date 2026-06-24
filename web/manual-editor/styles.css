@@ -1141,6 +1141,12 @@ h2 {
   user-select: none;
 }
 
+.is-moving-clip,
+.is-moving-clip * {
+  cursor: grabbing !important;
+  user-select: none;
+}
+
 .audio-timeline-list {
   display: grid;
   width: var(--track-width);

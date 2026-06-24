@@ -176,8 +176,8 @@ function topVideoClipAt(clips, seconds) {
   return clips
     .filter((clip) => !clip.hidden && seconds >= Number(clip.timelineStart || 0) && seconds < Number(clip.timelineStart || 0) + Number(clip.duration || 0))
     .sort((left, right) => {
-      if (Number(left.trackZIndex) !== Number(right.trackZIndex)) return Number(right.trackZIndex) - Number(left.trackZIndex);
-      return Number(right.timelineStart || 0) - Number(left.timelineStart || 0);
+      if (Number(left.timelineStart || 0) !== Number(right.timelineStart || 0)) return Number(right.timelineStart || 0) - Number(left.timelineStart || 0);
+      return Number(right.trackZIndex) - Number(left.trackZIndex);
     })[0] || null;
 }
 
