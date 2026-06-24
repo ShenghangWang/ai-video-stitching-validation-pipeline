@@ -1293,6 +1293,12 @@ function restartAudioPreviewIfPlaying() {
   startAudioPreview(currentTimelineSeconds(), state.playToken);
 }
 
+function syncActiveVideoPreviewAudio() {
+  const item = state.timeline.find((candidate) => candidate.id === state.activeItemId);
+  if (!item) return;
+  els.previewVideo.muted = shouldMuteVideoItem(item);
+}
+
 function duplicateSelectedItem() {
   const item = selectedItem();
   if (!item) return;
@@ -1769,12 +1775,15 @@ function toggleVideoMute(itemId) {
   if (!item) return;
   pushHistory();
   item.muted = !item.muted;
+  if (item.id === state.activeItemId) syncActiveVideoPreviewAudio();
   render();
 }
 
 function toggleVideoTrack(key) {
   pushHistory();
   state.videoTrack[key] = !state.videoTrack[key];
+  if (key === "hidden") applyPreviewVisibility(state.timeline.find((candidate) => candidate.id === state.activeItemId) || selectedItem());
+  if (key === "muted" || key === "solo" || key === "hidden") syncActiveVideoPreviewAudio();
   if (key === "solo") restartAudioPreviewIfPlaying();
   const labels = {
     locked: state.videoTrack.locked ? "Video track locked" : "Video track unlocked",
@@ -1791,6 +1800,7 @@ function toggleAudioTrack(trackKey, key) {
   if (!track) return;
   pushHistory();
   track[key] = !track[key];
+  if (key === "solo") syncActiveVideoPreviewAudio();
   if (key === "muted" || key === "solo") restartAudioPreviewIfPlaying();
   const labels = {
     locked: track.locked ? `${trackKey} track locked` : `${trackKey} track unlocked`,
