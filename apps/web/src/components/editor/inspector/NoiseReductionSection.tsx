@@ -768,7 +768,7 @@ export const NoiseReductionSection: React.FC<NoiseReductionSectionProps> = ({
               <span
                 className={`rounded-full px-2 py-0.5 text-[8px] font-medium ${
                   enabled
-                    ? "bg-green-500/15 text-green-400"
+                    ? "bg-orange-500/15 text-orange-300"
                     : "bg-background-tertiary text-text-muted"
                 }`}
               >
@@ -777,7 +777,7 @@ export const NoiseReductionSection: React.FC<NoiseReductionSectionProps> = ({
             </div>
             <div className="mt-1">{activePreset.description}</div>
             {appliedMessage && (
-              <div className="mt-2 rounded-md border border-green-500/20 bg-green-500/10 px-2 py-1 text-green-400">
+              <div className="mt-2 rounded-md border border-orange-400/20 bg-orange-500/10 px-2 py-1 text-orange-300">
                 {appliedMessage}
               </div>
             )}
@@ -883,7 +883,7 @@ export const NoiseReductionSection: React.FC<NoiseReductionSectionProps> = ({
                 : learningState === "ready"
                   ? "bg-primary/10 border border-primary/40 text-primary hover:bg-primary/20"
                 : learningState === "success"
-                  ? "bg-green-500/20 text-green-500"
+                  ? "bg-orange-500/20 text-orange-300"
                   : learningState === "error"
                     ? "bg-red-500/20 text-red-500"
                     : "bg-primary/10 border border-primary/30 text-primary hover:bg-primary/20"

@@ -193,7 +193,7 @@ const MediaThumbnail: React.FC<{
     : item.isPlaceholder
       ? "border-yellow-500 ring-1 ring-yellow-500/50 shadow-[0_0_10px_rgba(234,179,8,0.3)]"
       : isSelected
-        ? "border-primary ring-1 ring-primary/50 shadow-[0_0_10px_rgba(34,197,94,0.2)]"
+        ? "border-primary ring-1 ring-primary/50 shadow-[0_0_10px_rgba(255,145,77,0.24)]"
         : "border-border hover:border-text-secondary";
 
   const hoverOverlay = (
@@ -377,7 +377,7 @@ const MediaThumbnail: React.FC<{
         )}
 
         {isSelected && (
-          <div className="w-2 h-2 bg-primary rounded-full shadow-[0_0_8px_#22c55e] flex-shrink-0" />
+          <div className="w-2 h-2 bg-primary rounded-full shadow-[0_0_8px_#ff914d] flex-shrink-0" />
         )}
       </div>
         </ContextMenuTrigger>
@@ -504,7 +504,7 @@ const MediaThumbnail: React.FC<{
 
         {/* Selection indicator */}
         {isSelected && (
-          <div className="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full shadow-[0_0_8px_#22c55e]" />
+          <div className="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full shadow-[0_0_8px_#ff914d]" />
         )}
       </div>
 

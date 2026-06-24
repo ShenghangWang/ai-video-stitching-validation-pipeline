@@ -170,7 +170,7 @@ export function HistoryPanel() {
                           />
                           <button
                             onClick={handleSaveRename}
-                            className="p-0.5 text-green-500 hover:text-green-400"
+                            className="p-0.5 text-orange-500 hover:text-orange-400"
                           >
                             <Check size={10} />
                           </button>

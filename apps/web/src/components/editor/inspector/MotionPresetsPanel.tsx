@@ -545,7 +545,7 @@ export const MotionPresetsPanel: React.FC<MotionPresetsPanelProps> = ({
             {appliedState.entrance && (
               <button
                 onClick={() => handleRemovePresets("entrance")}
-                className="flex items-center gap-1 px-2 py-1 bg-green-500/20 text-green-400 rounded text-[9px] hover:bg-green-500/30"
+                className="flex items-center gap-1 px-2 py-1 bg-orange-500/20 text-orange-300 rounded text-[9px] hover:bg-orange-500/30"
               >
                 <ArrowRight size={10} />
                 Entry ×
@@ -595,7 +595,7 @@ export const MotionPresetsPanel: React.FC<MotionPresetsPanelProps> = ({
               <Icon size={12} />
               {category.name}
               {isApplied && (
-                <span className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full" />
+                <span className="absolute -top-1 -right-1 w-2 h-2 bg-orange-400 rounded-full" />
               )}
             </button>
           );

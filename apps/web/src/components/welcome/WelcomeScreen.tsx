@@ -107,12 +107,6 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ initialTab }) => {
   }, [navigate]);
 
   useEffect(() => {
-    if (skipWelcomeScreen) {
-      navigate("editor");
-    }
-  }, [skipWelcomeScreen, navigate]);
-
-  useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         if (viewMode !== "home") {
@@ -174,24 +168,15 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ initialTab }) => {
 
   return (
     <div className="fixed inset-0 z-50 bg-background overflow-hidden">
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(34,197,94,0.05),transparent_60%)]" />
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,rgba(34,197,94,0.03),transparent_50%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(255,145,77,0.06),transparent_60%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,rgba(251,122,46,0.04),transparent_50%)]" />
 
       <div className="relative h-full flex flex-col items-center justify-center px-6">
         <div className="w-full max-w-3xl">
           <div className="flex flex-col items-center text-center mb-12">
-            <div className="mb-6">
-              <span className="text-lg sm:text-xl font-semibold text-text-primary tracking-tight">
-                AI-Video-Stitching-Pipeline
-              </span>
-            </div>
-
-            <h1 className="text-4xl sm:text-5xl font-bold text-text-primary tracking-tight mb-3">
-              From idea to export.
+            <h1 className="text-4xl sm:text-5xl font-bold text-primary tracking-tight mb-6">
+              AI-Video-Stitching-Pipeline
             </h1>
-            <p className="text-xl text-text-secondary mb-8">
-              In your browser.
-            </p>
             <p className="text-base text-text-muted max-w-md">
               Pick a format and start creating. You can change this anytime.
             </p>

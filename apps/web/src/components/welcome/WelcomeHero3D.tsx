@@ -17,8 +17,8 @@ export const WelcomeHero3D: React.FC<WelcomeHero3DProps> = ({
   const videoFramesRef = useRef<THREE.Group | null>(null);
   const particlesRef = useRef<THREE.Points | null>(null);
 
-  const primaryColor = useMemo(() => new THREE.Color(0x22c55e), []);
-  const secondaryColor = useMemo(() => new THREE.Color(0x16a34a), []);
+  const primaryColor = useMemo(() => new THREE.Color(0xff914d), []);
+  const secondaryColor = useMemo(() => new THREE.Color(0xfb7a2e), []);
 
   useEffect(() => {
     if (!containerRef.current) return;

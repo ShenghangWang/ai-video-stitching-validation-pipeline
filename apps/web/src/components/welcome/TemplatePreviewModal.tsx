@@ -234,7 +234,7 @@ export const TemplatePreviewModal: React.FC<TemplatePreviewModalProps> = ({
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-primary/20 to-emerald-500/20 flex items-center justify-center">
+                  <div className="w-full h-full bg-gradient-to-br from-primary/20 to-orange-500/20 flex items-center justify-center">
                     <Play size={40} className="text-text-muted" />
                   </div>
                 )}
@@ -259,7 +259,7 @@ export const TemplatePreviewModal: React.FC<TemplatePreviewModalProps> = ({
                       >
                         <div
                           className="w-2 h-2 rounded-full"
-                          style={{ backgroundColor: scene.color || "#22c55e" }}
+                          style={{ backgroundColor: scene.color || "#ff914d" }}
                         />
                         <span className="text-text-secondary">
                           {scene.label}

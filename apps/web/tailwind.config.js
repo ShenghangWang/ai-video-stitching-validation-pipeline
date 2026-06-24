@@ -9,7 +9,7 @@ export default {
   theme: {
     extend: {
       colors: {
-        // ── v2 editor tokens (cinematic, emerald)
+        // ── v2 editor tokens (cinematic, orange)
         //   These read raw oklch via CSS variables. Opacity modifiers
         //   are not supported on these — use the *-soft / *-glow
         //   companion tokens (or arbitrary values) when you need a tint.
@@ -40,7 +40,7 @@ export default {
           fg: "var(--accent-fg)",
           // shadcn primitives (Select/DropdownMenu/ContextMenu/Button) hover
           // with `bg-accent text-accent-foreground`; without this mapping the
-          // text color resolved to nothing and disappeared on the emerald
+          // text color resolved to nothing and disappeared on the accent
           // hover background. Maps to the on-accent text token.
           foreground: "var(--accent-fg)",
           glow: "var(--accent-glow)",

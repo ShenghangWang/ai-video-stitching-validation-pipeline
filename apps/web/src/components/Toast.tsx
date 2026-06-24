@@ -24,15 +24,15 @@ const THEME_CONFIG: Record<
   success: {
     light: {
       bg: "bg-white",
-      border: "border-emerald-200",
-      icon: "text-emerald-600",
-      progress: "bg-emerald-500",
+      border: "border-orange-200",
+      icon: "text-orange-600",
+      progress: "bg-orange-400",
     },
     dark: {
       bg: "bg-zinc-900/95",
-      border: "border-emerald-500/30",
-      icon: "text-emerald-400",
-      progress: "bg-emerald-500",
+      border: "border-orange-400/30",
+      icon: "text-orange-300",
+      progress: "bg-orange-400",
     },
   },
   error: {

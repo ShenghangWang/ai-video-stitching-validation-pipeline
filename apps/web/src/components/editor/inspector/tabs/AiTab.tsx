@@ -164,7 +164,7 @@ export const AiTab: React.FC<AiTabProps> = ({
                         transcriptionProgress.phase === "error"
                           ? "bg-red-500"
                           : transcriptionProgress.phase === "complete"
-                            ? "bg-green-500"
+                            ? "bg-orange-400"
                             : "bg-primary"
                       }`}
                       style={{ width: `${transcriptionProgress.progress}%` }}
@@ -250,7 +250,7 @@ export const AiTab: React.FC<AiTabProps> = ({
                 disabled={isEnhancingAudio || isApplyingSelectedClipEffect}
                 className={`w-full py-2 border rounded-lg text-[10px] transition-all flex items-center justify-center gap-1.5 ${
                   audioEnhanced
-                    ? "bg-green-500/20 border-green-500 text-green-400"
+                    ? "bg-orange-500/20 border-orange-400 text-orange-300"
                     : isEnhancingAudio || isApplyingSelectedClipEffect
                       ? "bg-background-tertiary border-border text-text-muted cursor-not-allowed"
                       : "bg-background-tertiary hover:bg-primary hover:text-white border-border hover:border-primary"

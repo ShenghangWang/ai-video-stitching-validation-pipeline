@@ -190,9 +190,9 @@ export const getTrackInfo = (track: Track, index: number): TrackInfo => {
       return {
         label: `G${index + 1}`,
         icon: Shapes,
-        color: "bg-green-500",
-        textColor: "text-green-400",
-        bgLight: "bg-green-500/20",
+        color: "bg-orange-500",
+        textColor: "text-orange-300",
+        bgLight: "bg-orange-500/20",
       };
     default:
       return {
@@ -206,7 +206,7 @@ export const getTrackInfo = (track: Track, index: number): TrackInfo => {
 };
 
 export const getClipStyle = (trackType: string): ClipStyle => {
-  // Clip palette matches the v2 mockup: video=cyan, audio=emerald,
+  // Clip palette matches the v2 mockup: video=cyan, audio=orange,
   // image=purple/music, text=amber.
   switch (trackType) {
     case "video":
@@ -218,8 +218,8 @@ export const getClipStyle = (trackType: string): ClipStyle => {
       };
     case "audio":
       return {
-        bg: "bg-emerald-600/25",
-        border: "border-emerald-500/60",
+        bg: "bg-orange-600/25",
+        border: "border-orange-400/60",
         text: "text-white/85",
         selectedText: "text-white",
       };

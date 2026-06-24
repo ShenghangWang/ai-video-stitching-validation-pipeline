@@ -744,7 +744,7 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
                 <div className="flex items-center gap-3">
                   <div className="flex items-center gap-1.5 text-xs">
                     {timeEstimate.confidence === "measured" ? (
-                      <CheckCircle size={12} className="text-green-500" />
+                      <CheckCircle size={12} className="text-orange-300" />
                     ) : (
                       <Gauge size={12} className="text-yellow-500" />
                     )}
@@ -806,7 +806,7 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
                         key={rec.codec}
                         className={`px-1 py-0.5 rounded text-[9px] ${
                           rec.speedRating === "fast"
-                            ? "bg-green-500/20 text-green-400"
+                            ? "bg-orange-500/20 text-orange-300"
                             : rec.speedRating === "medium"
                             ? "bg-yellow-500/20 text-yellow-400"
                             : "bg-red-500/20 text-red-400"
@@ -841,7 +841,7 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
                   )}
                 </div>
                 {timeEstimate && deviceProfile?.encoding[customSettings.codec as keyof typeof deviceProfile.encoding]?.hardware && (
-                  <div className="flex items-center gap-1 text-green-500">
+                  <div className="flex items-center gap-1 text-orange-300">
                     <Zap size={12} />
                     Hardware accelerated
                   </div>

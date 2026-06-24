@@ -51,7 +51,7 @@ export const MarkersPanel: React.FC = () => {
 
   const PRESET_COLORS = [
     "#3b82f6", // blue
-    "#10b981", // green
+    "#ff914d", // orange
     "#f59e0b", // amber
     "#ef4444", // red
     "#8b5cf6", // purple
@@ -127,7 +127,7 @@ export const MarkersPanel: React.FC = () => {
                     <div className="flex gap-1">
                       <button
                         onClick={handleSaveEdit}
-                        className="flex-1 flex items-center justify-center gap-1 px-2 py-1 bg-green-500 hover:bg-green-600 text-white rounded text-xs transition-colors"
+                        className="flex-1 flex items-center justify-center gap-1 px-2 py-1 bg-orange-500 hover:bg-orange-600 text-black rounded text-xs transition-colors"
                       >
                         <Check size={12} />
                         Save

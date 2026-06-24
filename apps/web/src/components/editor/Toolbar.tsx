@@ -27,6 +27,7 @@ import {
   MoreHorizontal,
   Command,
   Search,
+  ArrowLeft,
 } from "lucide-react";
 import { useProjectStore } from "../../stores/project-store";
 import { useUIStore } from "../../stores/ui-store";
@@ -628,17 +629,24 @@ export const Toolbar: React.FC = () => {
 
   return (
     <header className="h-topbar grid grid-cols-[1fr_auto_1fr] items-center gap-2.5 px-3 bg-bg border-b border-border shrink-0 z-30 relative">
-      {/* ─── Left: window dots + autosave ─────────────────────── */}
-      <div className="flex items-center gap-2">
-        <button
-          onClick={() => navigate("welcome")}
-          className="flex items-center gap-1.5 pr-1.5"
-          title="Back to home"
-        >
-          <span className="w-[11px] h-[11px] rounded-full bg-[oklch(0.7_0.18_25)]" />
-          <span className="w-[11px] h-[11px] rounded-full bg-[oklch(0.78_0.14_80)]" />
-          <span className="w-[11px] h-[11px] rounded-full bg-[oklch(0.7_0.15_145)]" />
-        </button>
+      {/* ─── Left: home navigation + product status ───────────── */}
+      <div className="flex items-center gap-2 min-w-0">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              onClick={() => navigate("welcome")}
+              className="w-[26px] h-[26px] grid place-items-center rounded-md text-accent hover:bg-accent-soft transition-colors shrink-0"
+              aria-label="Back to home"
+            >
+              <ArrowLeft size={15} />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>Back to home</TooltipContent>
+        </Tooltip>
+
+        <span className="text-[12px] font-semibold text-accent truncate">
+          AI-Video-Stitching-Pipeline
+        </span>
 
         <span className="text-[11px] text-fg-3 flex items-center gap-1.5">
           <span className="w-[5px] h-[5px] rounded-full bg-accent" />

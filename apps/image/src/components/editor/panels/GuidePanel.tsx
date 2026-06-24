@@ -229,7 +229,7 @@ export function GuidePanel() {
           {verticalGuides.length > 0 && (
             <div className="space-y-1">
               <div className="flex items-center gap-1.5">
-                <ArrowDown size={10} className="text-green-400" />
+                <ArrowDown size={10} className="text-orange-400" />
                 <span className="text-[10px] text-muted-foreground">
                   Vertical ({verticalGuides.length})
                 </span>
@@ -238,9 +238,9 @@ export function GuidePanel() {
                 {verticalGuides.map((guide) => (
                   <div
                     key={guide.id}
-                    className="flex items-center gap-1 px-2 py-1 rounded bg-green-500/10 group"
+                    className="flex items-center gap-1 px-2 py-1 rounded bg-orange-500/10 group"
                   >
-                    <span className="text-[10px] text-green-400 w-4">X</span>
+                    <span className="text-[10px] text-orange-400 w-4">X</span>
                     {editingGuideId === guide.id ? (
                       <input
                         type="number"

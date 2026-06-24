@@ -47,10 +47,10 @@ const CATEGORY_GRADIENTS: Record<string, string> = {
   twitter: "from-sky-500 to-blue-500",
   linkedin: "from-blue-700 to-blue-500",
   pinterest: "from-red-500 to-rose-400",
-  intro: "from-emerald-500 to-green-500",
-  outro: "from-green-500 to-emerald-500",
+  intro: "from-orange-400 to-orange-600",
+  outro: "from-orange-600 to-amber-400",
   promo: "from-amber-500 to-orange-500",
-  "lower-third": "from-emerald-500 to-teal-500",
+  "lower-third": "from-orange-500 to-amber-400",
   slideshow: "from-teal-500 to-cyan-500",
   custom: "from-zinc-500 to-zinc-400",
 };
@@ -66,7 +66,7 @@ export const TemplateCard: React.FC<TemplateCardProps> = ({
   const isVertical = preset && preset.height > preset.width;
   const Icon = CATEGORY_ICONS[category] || Square;
   const gradient =
-    CATEGORY_GRADIENTS[category] || "from-primary to-emerald-500";
+    CATEGORY_GRADIENTS[category] || "from-primary to-orange-500";
 
   const formatDuration = (seconds: number): string => {
     if (seconds < 60) return `${seconds}s`;

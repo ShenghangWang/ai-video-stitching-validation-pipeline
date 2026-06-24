@@ -75,7 +75,7 @@ export const EditingTemplateControls: React.FC<EditingTemplateControlsProps> = (
                 value={Number(value)}
                 disabled={disabled}
                 onChange={(event) => onChange(control.id, Number(event.target.value))}
-                className="w-full accent-[var(--color-primary,#22c55e)] disabled:cursor-not-allowed disabled:opacity-60"
+                className="w-full accent-[var(--color-primary,#ff914d)] disabled:cursor-not-allowed disabled:opacity-60"
               />
             </div>
           );

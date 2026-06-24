@@ -27,9 +27,9 @@ export default {
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
-          hover: "#16a34a",
-          active: "#15803d",
-          glow: "rgba(34, 197, 94, 0.5)",
+          hover: "#fb7a2e",
+          active: "#ea6a1d",
+          glow: "rgba(255, 145, 77, 0.5)",
         },
         secondary: {
           DEFAULT: "hsl(var(--secondary))",
@@ -60,7 +60,7 @@ export default {
           muted: "rgb(var(--color-text-muted) / <alpha-value>)",
         },
         status: {
-          success: "#22c55e",
+          success: "#ff914d",
           warning: "#eab308",
           error: "#ef4444",
           info: "#3b82f6",
@@ -71,8 +71,8 @@ export default {
         mono: ['Geist Mono', 'monospace'],
       },
       boxShadow: {
-        'glow': '0 0 10px rgba(34, 197, 94, 0.3)',
-        'glow-lg': '0 0 20px rgba(34, 197, 94, 0.4)',
+        'glow': '0 0 10px rgba(255, 145, 77, 0.3)',
+        'glow-lg': '0 0 20px rgba(255, 145, 77, 0.4)',
         'panel': '0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.15)',
       },
       borderRadius: {

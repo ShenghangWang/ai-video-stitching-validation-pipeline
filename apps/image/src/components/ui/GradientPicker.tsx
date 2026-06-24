@@ -11,7 +11,7 @@ interface GradientPickerProps {
 const PRESET_GRADIENTS: Gradient[] = [
   { type: 'linear', angle: 90, stops: [{ offset: 0, color: '#3b82f6' }, { offset: 1, color: '#8b5cf6' }] },
   { type: 'linear', angle: 90, stops: [{ offset: 0, color: '#ec4899' }, { offset: 1, color: '#f97316' }] },
-  { type: 'linear', angle: 90, stops: [{ offset: 0, color: '#10b981' }, { offset: 1, color: '#06b6d4' }] },
+  { type: 'linear', angle: 90, stops: [{ offset: 0, color: '#ff914d' }, { offset: 1, color: '#fb7a2e' }] },
   { type: 'linear', angle: 180, stops: [{ offset: 0, color: '#fbbf24' }, { offset: 1, color: '#ef4444' }] },
   { type: 'linear', angle: 135, stops: [{ offset: 0, color: '#1e293b' }, { offset: 1, color: '#475569' }] },
   { type: 'radial', angle: 0, stops: [{ offset: 0, color: '#ffffff' }, { offset: 1, color: '#3b82f6' }] },

@@ -171,7 +171,7 @@ export const ShapeClipComponent: React.FC<ShapeClipComponentProps> = ({
           : "Sticker"
         : "SVG";
   const IconComponent = isShape ? Shapes : isSticker ? Smile : FileCode;
-  const colorClass = isShape ? "green" : isSticker ? "pink" : "purple";
+  const colorClass = isShape ? "orange" : isSticker ? "pink" : "purple";
 
   const isInteracting = isDragging || isTrimming;
   const clipType = isShape ? "shape" : isSticker ? (shapeClip.type === "emoji" ? "emoji" : "sticker") : "svg";
@@ -199,21 +199,21 @@ export const ShapeClipComponent: React.FC<ShapeClipComponentProps> = ({
         >
           <div
             className={`absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize z-20 flex items-center justify-center transition-opacity ${
-              isSelected ? "opacity-100 bg-green-400" : `opacity-0 group-hover:opacity-100 hover:bg-${colorClass}-400/50`
+              isSelected ? "opacity-100 bg-orange-400" : `opacity-0 group-hover:opacity-100 hover:bg-${colorClass}-400/50`
             }`}
             style={{ borderRadius: "6px 0 0 6px" }}
             onMouseDown={(e) => handleTrimStart(e, "left")}
           >
-            {isSelected && <div className="w-0.5 h-3 bg-green-900/60 rounded-full" />}
+            {isSelected && <div className="w-0.5 h-3 bg-orange-950/60 rounded-full" />}
           </div>
           <div
             className={`absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize z-20 flex items-center justify-center transition-opacity ${
-              isSelected ? "opacity-100 bg-green-400" : `opacity-0 group-hover:opacity-100 hover:bg-${colorClass}-400/50`
+              isSelected ? "opacity-100 bg-orange-400" : `opacity-0 group-hover:opacity-100 hover:bg-${colorClass}-400/50`
             }`}
             style={{ borderRadius: "0 6px 6px 0" }}
             onMouseDown={(e) => handleTrimStart(e, "right")}
           >
-            {isSelected && <div className="w-0.5 h-3 bg-green-900/60 rounded-full" />}
+            {isSelected && <div className="w-0.5 h-3 bg-orange-950/60 rounded-full" />}
           </div>
           <div className="w-full h-full flex items-center gap-1 px-3">
             <IconComponent
@@ -227,7 +227,7 @@ export const ShapeClipComponent: React.FC<ShapeClipComponentProps> = ({
             </span>
           </div>
           {isSelected && (
-            <div className="absolute inset-0 border-2 border-green-400 rounded-lg pointer-events-none" />
+            <div className="absolute inset-0 border-2 border-orange-400 rounded-lg pointer-events-none" />
           )}
         </div>
       </ContextMenuTrigger>

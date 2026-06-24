@@ -772,7 +772,7 @@ export const ClipComponent: React.FC<ClipComponentProps> = ({
                 <path
                   d={generateWaveformPath(mediaItem.waveformData, 100)}
                   stroke="currentColor"
-                  className={isAudio ? "text-blue-400" : "text-green-300"}
+                  className={isAudio ? "text-orange-300" : "text-orange-200"}
                   fill="none"
                   strokeWidth="1"
                   vectorEffect="non-scaling-stroke"
@@ -783,7 +783,7 @@ export const ClipComponent: React.FC<ClipComponentProps> = ({
                 <path
                   d="M0,20 Q10,5 20,20 T40,20 T60,20 T80,20 T100,20"
                   stroke="currentColor"
-                  className="text-blue-400"
+                  className="text-orange-300"
                   fill="none"
                   vectorEffect="non-scaling-stroke"
                 />
@@ -793,9 +793,9 @@ export const ClipComponent: React.FC<ClipComponentProps> = ({
           {isAudio && (
             <div className="absolute inset-x-0 top-1 flex justify-center opacity-0 group-hover:opacity-60 transition-opacity pointer-events-none">
               <div className="flex gap-0.5">
-                <div className="w-1 h-1 rounded-full bg-blue-300" />
-                <div className="w-1 h-1 rounded-full bg-blue-300" />
-                <div className="w-1 h-1 rounded-full bg-blue-300" />
+                <div className="w-1 h-1 rounded-full bg-orange-200" />
+                <div className="w-1 h-1 rounded-full bg-orange-200" />
+                <div className="w-1 h-1 rounded-full bg-orange-200" />
               </div>
             </div>
           )}
@@ -830,7 +830,7 @@ export const ClipComponent: React.FC<ClipComponentProps> = ({
             onMouseDown={handleTrimMouseDown("left")}
             className={`absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize z-20 flex items-center justify-center transition-opacity ${
               isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-            } ${isSelected ? "bg-primary" : isAudio ? "hover:bg-blue-400/50" : isVideo ? "hover:bg-green-400/50" : "hover:bg-purple-400/50"}`}
+            } ${isSelected ? "bg-primary" : isAudio ? "hover:bg-orange-400/50" : isVideo ? "hover:bg-orange-400/50" : "hover:bg-purple-400/50"}`}
             style={{ borderRadius: "6px 0 0 6px" }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -842,7 +842,7 @@ export const ClipComponent: React.FC<ClipComponentProps> = ({
             onMouseDown={handleTrimMouseDown("right")}
             className={`absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize z-20 flex items-center justify-center transition-opacity ${
               isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-            } ${isSelected ? "bg-primary" : isAudio ? "hover:bg-blue-400/50" : isVideo ? "hover:bg-green-400/50" : "hover:bg-purple-400/50"}`}
+            } ${isSelected ? "bg-primary" : isAudio ? "hover:bg-orange-400/50" : isVideo ? "hover:bg-orange-400/50" : "hover:bg-purple-400/50"}`}
             style={{ borderRadius: "0 6px 6px 0" }}
             onClick={(e) => e.stopPropagation()}
           >

@@ -76,7 +76,7 @@ export function ColorHarmonySection({ baseColor, onColorSelect }: Props) {
                 className="flex items-center gap-1 text-[9px] text-muted-foreground hover:text-foreground transition-colors"
               >
                 {copiedColor === color ? (
-                  <Check size={10} className="text-green-500" />
+                  <Check size={10} className="text-orange-500" />
                 ) : (
                   <Copy size={10} />
                 )}

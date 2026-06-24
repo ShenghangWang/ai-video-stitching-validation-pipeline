@@ -190,11 +190,11 @@ export const AIGenTab: React.FC = () => {
             icon={Layers}
             title="Project Templates"
             description="Start with pre-built project structures"
-            iconColor="text-green-400"
-            iconBg="bg-green-500/20"
-            activeBorder="border-green-500/50"
-            activeBg="bg-green-500/10"
-            activeRing="ring-green-500/30"
+            iconColor="text-orange-300"
+            iconBg="bg-orange-500/20"
+            activeBorder="border-orange-400/50"
+            activeBg="bg-orange-500/10"
+            activeRing="ring-orange-400/30"
             isActive={activeFeature === "templates"}
             onClick={() => handleFeatureClick("templates")}
           />

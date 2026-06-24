@@ -41,7 +41,7 @@ const MasterChannel: React.FC<{
   const getColor = (percent: number) => {
     if (percent > 90) return "bg-red-500";
     if (percent > 75) return "bg-yellow-500";
-    return "bg-green-500";
+    return "bg-orange-400";
   };
 
   return (

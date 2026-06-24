@@ -42,7 +42,7 @@ const COMPOUND_COLORS = [
   "#8b5cf6",
   "#ec4899",
   "#f97316",
-  "#22c55e",
+  "#ff914d",
   "#06b6d4",
   "#3b82f6",
   "#eab308",

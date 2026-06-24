@@ -264,8 +264,8 @@ export const TextToSpeechPanel: React.FC = () => {
       )}
 
       {successMsg && (
-        <div className="p-2 bg-green-500/10 border border-green-500/30 rounded-lg">
-          <p className="text-[10px] text-green-400">{successMsg}</p>
+        <div className="p-2 bg-orange-500/10 border border-orange-400/30 rounded-lg">
+          <p className="text-[10px] text-orange-300">{successMsg}</p>
         </div>
       )}
 

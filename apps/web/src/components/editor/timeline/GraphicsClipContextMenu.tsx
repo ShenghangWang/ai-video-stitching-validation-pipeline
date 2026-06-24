@@ -89,7 +89,7 @@ export const GraphicsClipContextMenu: React.FC<GraphicsClipContextMenuProps> = (
       case "text":
         return <Type className="mr-2 h-3 w-3 text-amber-400" />;
       default:
-        return <Shapes className="mr-2 h-3 w-3 text-green-400" />;
+        return <Shapes className="mr-2 h-3 w-3 text-orange-300" />;
     }
   };
 

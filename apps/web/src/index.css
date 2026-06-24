@@ -6,7 +6,7 @@
 @tailwind utilities;
 
 /* ============================================================
-   AI-Video-Stitching-Pipeline — v2 design tokens (cinematic dark, emerald)
+   AI-Video-Stitching-Pipeline — v2 design tokens (cinematic dark, orange)
    All values are CSS variables. Components use Tailwind utilities
    that map to these via tailwind.config.js.
    ============================================================ */
@@ -57,24 +57,24 @@
     --shadow-lg: 0 1px 0 oklch(0 0 0 / 0.05), 0 24px 60px oklch(0 0 0 / 0.1);
     --track-bg: oklch(0.95 0.005 240);
     --tl-bg: oklch(0.93 0.005 240);
-    --waveform: oklch(0.72 0.16 162 / 0.55);
+    --waveform: oklch(0.74 0.16 55 / 0.55);
     /* preview stage: white in light mode so the area around the monitor
        matches the other white surfaces instead of a grey cinema stage */
     --stage-bg: oklch(1 0 0);
     /* the preview "screen" itself (canvas + letterbox): white in light */
     --screen-bg: oklch(1 0 0);
 
-    /* accent (emerald) */
-    --accent: oklch(0.72 0.16 162);
-    --accent-strong: oklch(0.66 0.18 162);
-    --accent-soft: oklch(0.72 0.16 162 / 0.16);
-    --accent-fg: oklch(0.99 0 0);
-    --accent-glow: oklch(0.72 0.16 162 / 0.4);
+    /* accent (orange) */
+    --accent: oklch(0.74 0.16 55);
+    --accent-strong: oklch(0.67 0.18 48);
+    --accent-soft: oklch(0.74 0.16 55 / 0.16);
+    --accent-fg: oklch(0.14 0.02 45);
+    --accent-glow: oklch(0.74 0.16 55 / 0.42);
 
     /* clip palette */
     --c-video: oklch(0.6 0.13 200);
     --c-text: oklch(0.78 0.13 80);
-    --c-audio: oklch(0.7 0.16 162);
+    --c-audio: oklch(0.74 0.16 55);
     --c-music: oklch(0.7 0.14 295);
   }
 
@@ -99,16 +99,16 @@
     --shadow-lg: 0 1px 0 oklch(0 0 0 / 0.6), 0 24px 60px oklch(0 0 0 / 0.5);
     --track-bg: oklch(0.12 0.006 240);
     --tl-bg: oklch(0.1 0.005 240);
-    --waveform: oklch(0.78 0.16 162 / 0.85);
+    --waveform: oklch(0.78 0.16 55 / 0.85);
     --stage-bg: oklch(0.08 0.004 240);
     /* the preview "screen" itself (canvas + letterbox): black in dark */
     --screen-bg: oklch(0 0 0);
 
-    --accent: oklch(0.72 0.16 162);
-    --accent-strong: oklch(0.66 0.18 162);
-    --accent-soft: oklch(0.72 0.16 162 / 0.16);
-    --accent-fg: oklch(0.99 0 0);
-    --accent-glow: oklch(0.72 0.16 162 / 0.4);
+    --accent: oklch(0.74 0.16 55);
+    --accent-strong: oklch(0.67 0.18 48);
+    --accent-soft: oklch(0.74 0.16 55 / 0.16);
+    --accent-fg: oklch(0.14 0.02 45);
+    --accent-glow: oklch(0.74 0.16 55 / 0.42);
   }
 
   [data-density="compact"] {
@@ -131,8 +131,8 @@
     --card-foreground: 240 10% 4%;
     --popover: 0 0% 100%;
     --popover-foreground: 240 10% 4%;
-    --primary: 158 64% 52%;
-    --primary-foreground: 0 0% 100%;
+    --primary: 24 100% 65%;
+    --primary-foreground: 24 30% 8%;
     --secondary: 240 5% 96%;
     --secondary-foreground: 240 6% 10%;
     --muted: 240 5% 96%;
@@ -142,7 +142,7 @@
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
     --input: 240 6% 90%;
-    --ring: 158 64% 52%;
+    --ring: 24 100% 65%;
     --radius: 0.5rem;
   }
 
@@ -154,8 +154,8 @@
     --card-foreground: 0 0% 95%;
     --popover: 220 10% 13%;
     --popover-foreground: 0 0% 95%;
-    --primary: 158 64% 52%;
-    --primary-foreground: 0 0% 100%;
+    --primary: 24 100% 65%;
+    --primary-foreground: 24 30% 8%;
     --secondary: 220 8% 18%;
     --secondary-foreground: 0 0% 95%;
     --muted: 220 8% 18%;
@@ -165,7 +165,7 @@
     --destructive: 0 62% 50%;
     --destructive-foreground: 0 0% 95%;
     --input: 220 8% 24%;
-    --ring: 158 64% 52%;
+    --ring: 24 100% 65%;
   }
 
   html,

@@ -331,7 +331,7 @@ export const NestedSequenceSection: React.FC<NestedSequenceSectionProps> = ({
                                 e.stopPropagation();
                                 handleConfirmRename();
                               }}
-                              className="p-1.5 bg-green-500/20 rounded text-green-400 hover:bg-green-500/30 transition-colors"
+                              className="p-1.5 bg-orange-500/20 rounded text-orange-300 hover:bg-orange-500/30 transition-colors"
                             >
                               <Check size={10} />
                             </button>

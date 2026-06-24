@@ -122,8 +122,12 @@ function App() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleKeyDown]);
 
+  const explicitWelcomeRoute =
+    typeof window !== "undefined" &&
+    /^#\/?(welcome|templates|recent)(\?|$|\/)/.test(window.location.hash);
   const showWelcome =
-    ["welcome", "templates", "recent"].includes(route) && !skipWelcomeScreen;
+    ["welcome", "templates", "recent"].includes(route) &&
+    (explicitWelcomeRoute || !skipWelcomeScreen);
   const initialTab =
     route === "templates"
       ? "templates"

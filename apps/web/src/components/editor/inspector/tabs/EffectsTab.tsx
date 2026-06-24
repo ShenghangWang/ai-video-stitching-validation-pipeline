@@ -252,7 +252,7 @@ export const EffectsTab: React.FC<EffectsTabProps> = ({
                       {effect.type.replace(/-/g, " ")}
                     </p>
                   </div>
-                  <span className={`text-[9px] font-medium ${effect.enabled !== false ? "text-green-400" : "text-text-muted"}`}>
+                  <span className={`text-[9px] font-medium ${effect.enabled !== false ? "text-orange-300" : "text-text-muted"}`}>
                     {effect.enabled !== false ? "On" : "Off"}
                   </span>
                 </div>

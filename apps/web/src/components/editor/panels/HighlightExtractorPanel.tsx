@@ -202,7 +202,7 @@ export const HighlightExtractorPanel: React.FC<HighlightExtractorPanelProps> = (
                   <div
                     className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold text-white ${
                       highlight.score >= 8
-                        ? "bg-green-500"
+                        ? "bg-orange-400"
                         : highlight.score >= 5
                           ? "bg-yellow-500"
                           : "bg-gray-500"
@@ -302,7 +302,7 @@ export const HighlightExtractorPanel: React.FC<HighlightExtractorPanelProps> = (
               }
             }}
             disabled={selected.size === 0}
-            className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded text-[11px] font-medium transition-colors disabled:opacity-50"
+            className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-orange-500 hover:bg-orange-600 text-black rounded text-[11px] font-medium transition-colors disabled:opacity-50"
           >
             <Check size={14} />
             Apply {selected.size} Highlight{selected.size !== 1 ? "s" : ""}
