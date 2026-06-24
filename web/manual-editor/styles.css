@@ -119,6 +119,16 @@ h1 {
   font-weight: 700;
 }
 
+.cloud-action::before {
+  content: "▣";
+  margin-right: 7px;
+}
+
+.button.primary::before {
+  content: "⇱";
+  margin-right: 7px;
+}
+
 .button.ghost {
   color: #d7d7d7;
 }
@@ -451,31 +461,31 @@ h2 {
 
 .inspector {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-rows: auto minmax(0, 1fr);
   border: 1px solid var(--line);
   border-radius: 14px;
-  overflow: auto;
+  overflow: hidden;
 }
 
 .inspector-tabs {
   display: flex;
   align-items: center;
-  gap: 22px;
-  min-height: 48px;
+  gap: 28px;
+  min-height: 62px;
   border-bottom: 1px solid var(--line);
-  padding: 0 20px;
+  padding: 0 28px;
 }
 
 .tab {
   position: relative;
-  min-height: 48px;
+  min-height: 62px;
   border: 0;
   background: transparent;
   color: var(--muted);
   cursor: pointer;
   padding: 0;
-  font-size: 13px;
-  font-weight: 650;
+  font-size: 16px;
+  font-weight: 700;
 }
 
 .tab.active {
@@ -496,7 +506,7 @@ h2 {
 .inspector-empty {
   display: grid;
   place-items: center;
-  min-height: 240px;
+  min-height: 360px;
   padding: 16px;
   color: var(--muted);
   text-align: center;
@@ -504,60 +514,153 @@ h2 {
 
 .clip-form {
   display: grid;
-  gap: 15px;
-  padding: 16px;
+  grid-template-rows: minmax(0, 1fr) auto;
+  min-height: 0;
+  padding: 0;
 }
 
-.clip-form label {
+.clip-form > input[type="text"],
+.clip-form > input[type="number"],
+.clip-form > .check-row {
+  display: none;
+}
+
+.inspector-panel {
   display: grid;
-  gap: 7px;
-  color: var(--muted);
-  font-size: 12px;
+  align-content: start;
+  gap: 24px;
+  min-height: 0;
+  padding: 32px 28px;
 }
 
-.clip-form input[type="text"],
-.clip-form input[type="number"] {
+.property-row {
+  display: grid;
+  grid-template-columns: 86px minmax(140px, 1fr) auto 28px;
+  align-items: center;
+  gap: 14px;
+}
+
+.property-label {
+  color: var(--muted);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.property-slider {
   width: 100%;
-  min-height: 34px;
+  accent-color: var(--ink);
+}
+
+.property-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 36px;
+}
+
+.property-grid label {
+  display: grid;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.number-stepper {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 108px;
+  min-height: 44px;
   border: 1px solid var(--line);
-  border-radius: 7px;
+  border-radius: 8px;
   background: var(--panel-3);
   color: var(--ink);
   padding: 0 10px;
 }
 
-.clip-form input[type="range"] {
+.number-stepper input {
   width: 100%;
-  accent-color: var(--ink);
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--ink);
+  text-align: right;
+  font-size: 18px;
+  font-weight: 700;
 }
 
-.xy-grid,
-.trim-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
+.stepper-icon {
+  color: var(--muted);
+  font-size: 17px;
 }
 
-.mirror-row,
-.inspector-actions {
+.keyframe-button {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  background: transparent;
+  color: var(--faint);
+  cursor: pointer;
+  font-size: 23px;
+  line-height: 1;
+}
+
+.mirror-property {
+  grid-template-columns: 86px minmax(0, 1fr);
+}
+
+.mirror-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px;
+  gap: 14px;
 }
 
 .mirror-row button {
-  min-height: 34px;
+  min-height: 44px;
   border: 1px solid var(--line);
-  border-radius: 7px;
+  border-radius: 8px;
   background: var(--panel-3);
+  color: var(--ink);
   cursor: pointer;
+  font-size: 20px;
+  font-weight: 800;
 }
 
-.check-row {
-  display: flex !important;
+.mirror-row button.active {
+  border-color: #cfcfcf;
+  background: #343434;
+}
+
+.inspector-placeholder {
+  display: grid;
+  min-height: 120px;
+  place-items: center;
+  color: var(--muted);
+}
+
+.inspector-footer {
+  display: flex;
   align-items: center;
-  grid-template-columns: auto 1fr;
-  color: #ddd !important;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 76px;
+  border-top: 1px solid var(--line);
+  padding: 0 28px;
+}
+
+#resetInspectorButton {
+  margin-left: auto;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.inspector-actions {
+  display: none;
 }
 
 .timeline-panel {

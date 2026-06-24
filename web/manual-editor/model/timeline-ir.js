@@ -36,6 +36,8 @@ export function buildRendererTimeline({ assets, timeline, audioTracks, settings 
         scale: 1,
         rotation: 0,
         opacity: 1,
+        flipX: false,
+        flipY: false,
       },
     };
   });

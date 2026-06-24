@@ -18,7 +18,7 @@
         <div class="toolbar" aria-label="Editor actions">
           <button id="projectButton" class="button ghost utility-action">Project JSON</button>
           <button id="jobButton" class="button ghost utility-action">Job JSON</button>
-          <button id="saveButton" class="button ghost" type="button">Save local</button>
+          <button id="saveButton" class="button ghost cloud-action" type="button">Sync cloud</button>
           <button id="loadButton" class="button ghost" type="button">Load local</button>
           <button id="exportButton" class="button primary">Export</button>
         </div>
@@ -88,68 +88,101 @@
 
             <aside class="inspector" aria-label="Clip inspector">
               <div class="inspector-tabs hidden">
-                <button class="tab active" type="button">Position</button>
-                <button class="tab" type="button">Speed</button>
-                <button class="tab" type="button">Blend</button>
-                <button class="tab" type="button">Mask</button>
+                <button class="tab active" type="button" data-inspector-tab="position">Position & Scale</button>
+                <button class="tab" type="button" data-inspector-tab="speed">Speed</button>
+                <button class="tab" type="button" data-inspector-tab="blend">Blend</button>
+                <button class="tab" type="button" data-inspector-tab="mask">Mask</button>
               </div>
               <div id="inspectorEmpty" class="inspector-empty">Select a timeline clip</div>
               <form id="clipForm" class="clip-form hidden">
-                <label>
-                  Name
-                  <input id="clipName" type="text">
-                </label>
-                <label>
-                  Role
-                  <input id="clipRole" type="text" placeholder="intro, b-roll, outro">
-                </label>
-                <label>
-                  Speed
-                  <input id="clipSpeed" type="number" min="0.25" max="4" step="0.05" value="1">
-                </label>
-                <label>
-                  Scale
-                  <input id="clipScale" type="range" min="0.1" max="2" step="0.01" value="1">
-                </label>
-                <div class="xy-grid">
-                  <label>
-                    X
-                    <input id="clipX" type="number" value="0">
-                  </label>
-                  <label>
-                    Y
-                    <input id="clipY" type="number" value="0">
-                  </label>
-                </div>
-                <label>
-                  Rotation
-                  <input id="clipRotation" type="range" min="-180" max="180" value="0">
-                </label>
-                <label>
-                  Opacity
-                  <input id="clipOpacity" type="range" min="0" max="1" step="0.01" value="1">
-                </label>
-                <div class="mirror-row">
-                  <button type="button">Flip H</button>
-                  <button type="button">Flip V</button>
-                </div>
-                <div class="trim-grid">
-                  <label>
-                    Start
-                    <input id="clipStart" type="number" min="0" step="0.01">
-                  </label>
-                  <label>
-                    End
-                    <input id="clipEnd" type="number" min="0" step="0.01">
-                  </label>
-                </div>
-                <label class="check-row">
+                <input id="clipName" type="text" aria-label="Clip name">
+                <input id="clipRole" type="text" aria-label="Clip role">
+                <input id="clipStart" type="number" min="0" step="0.01" aria-label="Clip start">
+                <input id="clipEnd" type="number" min="0" step="0.01" aria-label="Clip end">
+                <label class="check-row hidden">
                   <input id="clipMuted" type="checkbox">
                   Mute source audio
                 </label>
-                <div class="inspector-actions">
-                  <button id="duplicateButton" class="button ghost" type="button">Duplicate</button>
-                  <button id="deleteButton" class="button danger" type="button">Delete</button>
+
+                <div class="inspector-panel" data-panel="position">
+                  <div class="property-row scale-row">
+                    <span class="property-label">Scale</span>
+                    <input id="clipScale" class="property-slider" type="range" min="0.1" max="2" step="0.01" value="1" aria-label="Scale">
+                    <div class="number-stepper percent-stepper">
+                      <span class="stepper-icon">⇲</span>
+                      <input id="clipScaleNumber" type="number" min="10" max="200" step="1" value="100" aria-label="Scale percent">
+                      <span>%</span>
+                    </div>
+                    <button class="keyframe-button" type="button" aria-label="Scale keyframe">◇</button>
+                  </div>
+
+                  <div class="xy-grid property-grid">
+                    <label>
+                      <span>X</span>
+                      <div class="number-stepper">
+                        <input id="clipX" type="number" value="0" aria-label="X position">
+                      </div>
+                    </label>
+                    <label>
+                      <span>Y</span>
+                      <div class="number-stepper">
+                        <input id="clipY" type="number" value="0" aria-label="Y position">
+                      </div>
+                    </label>
+                  </div>
+
+                  <div class="property-row">
+                    <span class="property-label">Rotation</span>
+                    <input id="clipRotation" class="property-slider" type="range" min="-180" max="180" value="0" aria-label="Rotation">
+                    <div class="number-stepper degree-stepper">
+                      <span class="stepper-icon">◌</span>
+                      <input id="clipRotationNumber" type="number" min="-180" max="180" step="1" value="0" aria-label="Rotation degrees">
+                      <span>°</span>
+                    </div>
+                    <button class="keyframe-button" type="button" aria-label="Rotation keyframe">◇</button>
+                  </div>
+
+                  <div class="property-row mirror-property">
+                    <span class="property-label">Mirror</span>
+                    <div class="mirror-row">
+                      <button id="flipHButton" type="button" aria-label="Flip horizontal">↔</button>
+                      <button id="flipVButton" type="button" aria-label="Flip vertical">↕</button>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="inspector-panel hidden" data-panel="speed">
+                  <div class="property-row">
+                    <span class="property-label">Speed</span>
+                    <input id="clipSpeed" class="property-slider" type="range" min="0.25" max="4" step="0.05" value="1" aria-label="Speed">
+                    <div class="number-stepper">
+                      <input id="clipSpeedNumber" type="number" min="0.25" max="4" step="0.05" value="1" aria-label="Speed value">
+                      <span>x</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="inspector-panel hidden" data-panel="blend">
+                  <div class="property-row">
+                    <span class="property-label">Opacity</span>
+                    <input id="clipOpacity" class="property-slider" type="range" min="0" max="1" step="0.01" value="1" aria-label="Opacity">
+                    <div class="number-stepper percent-stepper">
+                      <input id="clipOpacityNumber" type="number" min="0" max="100" step="1" value="100" aria-label="Opacity percent">
+                      <span>%</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="inspector-panel hidden" data-panel="mask">
+                  <div class="inspector-placeholder">Mask controls are reserved for the full renderer.</div>
+                </div>
+
+                <div class="inspector-footer">
+                  <button id="resetInspectorButton" type="button">Reset attributes</button>
+                  <div class="inspector-actions">
+                    <button id="duplicateButton" class="button ghost" type="button">Duplicate</button>
+                    <button id="deleteButton" class="button danger" type="button">Delete</button>
+                  </div>
                 </div>
               </form>
               <form id="audioForm" class="clip-form audio-form hidden">

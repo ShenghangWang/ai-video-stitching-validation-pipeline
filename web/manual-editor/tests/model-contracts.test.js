@@ -53,6 +53,8 @@ const timeline = [
       scale: 1.25,
       rotation: 5,
       opacity: 0.8,
+      flipX: true,
+      flipY: false,
     },
   },
 ];
@@ -98,6 +100,7 @@ assert.equal(project.assets.length, 3);
 assert.equal(project.timeline.videoTracks[0].clips[0].muted, true);
 assert.equal(project.timeline.videoTracks[0].clips[0].hidden, true);
 assert.equal(project.timeline.videoTracks[0].clips[0].transform.scale, 1.25);
+assert.equal(project.timeline.videoTracks[0].clips[0].transform.flipX, true);
 assert.equal(project.timeline.videoTracks[0].clips[0].sourceDuration, 6);
 assert.equal(project.timeline.videoTracks[0].clips[0].duration, 3);
 assert.equal(project.timeline.videoTracks[0].clips[0].speed, 2);
@@ -112,6 +115,7 @@ assert.equal(ir.tracks.length, 3);
 assert.equal(ir.duration, 9);
 assert.equal(ir.assets.video_asset.objectUrl, "blob:video");
 assert.equal(ir.tracks[0].clips[0].transform.rotation, 5);
+assert.equal(ir.tracks[0].clips[0].transform.flipX, true);
 assert.equal(ir.tracks[0].clips[0].sourceDuration, 6);
 assert.equal(ir.tracks[0].clips[0].duration, 3);
 assert.equal(ir.tracks[0].clips[0].speed, 2);

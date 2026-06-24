@@ -32,6 +32,8 @@ export function buildEditorProject({ assets, timeline, audioTracks }) {
         scale: Number(item.transform?.scale ?? 1),
         rotation: Number(item.transform?.rotation ?? 0),
         opacity: Number(item.transform?.opacity ?? 1),
+        flipX: Boolean(item.transform?.flipX),
+        flipY: Boolean(item.transform?.flipY),
       },
     })),
   };

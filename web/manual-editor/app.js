@@ -11,6 +11,8 @@ const DEFAULT_TRANSFORM = Object.freeze({
   scale: 1,
   rotation: 0,
   opacity: 1,
+  flipX: false,
+  flipY: false,
 });
 
 const state = {
@@ -37,6 +39,7 @@ const state = {
   linkedSelection: false,
   showWaveforms: true,
   copiedVideoItem: null,
+  inspectorTab: "position",
 };
 
 const TRACK_DEFAULTS = Object.freeze({ id: "video_track_1", locked: false, hidden: false, muted: false, solo: false });
@@ -110,10 +113,17 @@ const els = {
   clipEnd: document.getElementById("clipEnd"),
   clipMuted: document.getElementById("clipMuted"),
   clipScale: document.getElementById("clipScale"),
+  clipScaleNumber: document.getElementById("clipScaleNumber"),
   clipX: document.getElementById("clipX"),
   clipY: document.getElementById("clipY"),
   clipRotation: document.getElementById("clipRotation"),
+  clipRotationNumber: document.getElementById("clipRotationNumber"),
   clipOpacity: document.getElementById("clipOpacity"),
+  clipOpacityNumber: document.getElementById("clipOpacityNumber"),
+  clipSpeedNumber: document.getElementById("clipSpeedNumber"),
+  flipHButton: document.getElementById("flipHButton"),
+  flipVButton: document.getElementById("flipVButton"),
+  resetInspectorButton: document.getElementById("resetInspectorButton"),
   narrationVolume: document.getElementById("narrationVolume"),
   musicVolume: document.getElementById("musicVolume"),
   duplicateButton: document.getElementById("duplicateButton"),
@@ -172,6 +182,9 @@ els.shieldButton.addEventListener("click", () => toggleVideoTrack("locked"));
 els.waveformButton.addEventListener("click", toggleWaveformDisplay);
 els.duplicateButton.addEventListener("click", duplicateSelectedItem);
 els.deleteButton.addEventListener("click", deleteSelectedItem);
+els.flipHButton.addEventListener("click", () => toggleSelectedFlip("flipX"));
+els.flipVButton.addEventListener("click", () => toggleSelectedFlip("flipY"));
+els.resetInspectorButton.addEventListener("click", resetSelectedInspectorAttributes);
 els.narrationVolume.addEventListener("input", () => updateTrackVolume("narration", els.narrationVolume.value));
 els.musicVolume.addEventListener("input", () => updateTrackVolume("music", els.musicVolume.value));
 
@@ -184,6 +197,13 @@ for (const tab of els.mediaTabs) {
   tab.addEventListener("click", () => {
     state.mediaFilter = tab.dataset.filter || "all";
     renderMedia();
+  });
+}
+
+for (const tab of Array.from(els.inspectorTabs.querySelectorAll("[data-inspector-tab]"))) {
+  tab.addEventListener("click", () => {
+    state.inspectorTab = tab.dataset.inspectorTab || "position";
+    renderInspector();
   });
 }
 
@@ -200,14 +220,18 @@ for (const input of [
   els.clipName,
   els.clipRole,
   els.clipSpeed,
+  els.clipSpeedNumber,
   els.clipStart,
   els.clipEnd,
   els.clipMuted,
   els.clipScale,
+  els.clipScaleNumber,
   els.clipX,
   els.clipY,
   els.clipRotation,
+  els.clipRotationNumber,
   els.clipOpacity,
+  els.clipOpacityNumber,
 ]) {
   input.addEventListener("input", updateSelectedFromForm);
 }
@@ -666,6 +690,7 @@ function renderInspector() {
   els.clipForm.classList.toggle("hidden", !item);
   els.audioForm.classList.toggle("hidden", !item);
   if (!item) return;
+  renderInspectorTabs();
 
   const asset = assetForItem(item);
   const transform = normalizeTransform(item.transform);
@@ -676,16 +701,31 @@ function renderInspector() {
   els.clipStart.value = String(item.start);
   els.clipEnd.value = String(item.end);
   els.clipSpeed.value = String(clipSpeed(item));
+  els.clipSpeedNumber.value = String(clipSpeed(item));
   els.clipMuted.checked = item.muted;
   els.clipScale.value = String(transform.scale);
+  els.clipScaleNumber.value = String(Math.round(transform.scale * 100));
   els.clipX.value = String(transform.x);
   els.clipY.value = String(transform.y);
   els.clipRotation.value = String(transform.rotation);
+  els.clipRotationNumber.value = String(transform.rotation);
   els.clipOpacity.value = String(transform.opacity);
+  els.clipOpacityNumber.value = String(Math.round(transform.opacity * 100));
+  els.flipHButton.classList.toggle("active", transform.flipX);
+  els.flipVButton.classList.toggle("active", transform.flipY);
   els.narrationVolume.value = String(state.audioTracks.narration.volume);
   els.musicVolume.value = String(state.audioTracks.music.volume);
   applyPreviewTransform(item);
   applyTrackVisibility();
+}
+
+function renderInspectorTabs() {
+  for (const tab of Array.from(els.inspectorTabs.querySelectorAll("[data-inspector-tab]"))) {
+    tab.classList.toggle("active", tab.dataset.inspectorTab === state.inspectorTab);
+  }
+  for (const panel of Array.from(els.clipForm.querySelectorAll("[data-panel]"))) {
+    panel.classList.toggle("hidden", panel.dataset.panel !== state.inspectorTab);
+  }
 }
 
 function renderTransport(currentSeconds = state.cursorSeconds) {
@@ -709,18 +749,64 @@ function updateSelectedFromForm() {
   item.role = els.clipRole.value.trim();
   item.start = roundTime(start);
   item.end = roundTime(end);
-  item.speed = clamp(Number(els.clipSpeed.value) || 1, 0.25, 4);
+  item.speed = readSpeedValue();
   item.muted = els.clipMuted.checked;
+  const currentTransform = normalizeTransform(item.transform);
   item.transform = {
     x: roundTime(Number(els.clipX.value) || 0),
     y: roundTime(Number(els.clipY.value) || 0),
-    scale: clamp(Number(els.clipScale.value) || 1, 0.1, 2),
-    rotation: roundTime(Number(els.clipRotation.value) || 0),
-    opacity: clamp(Number(els.clipOpacity.value) || 1, 0, 1),
+    scale: readScaleValue(),
+    rotation: readRotationValue(),
+    opacity: readOpacityValue(),
+    flipX: currentTransform.flipX,
+    flipY: currentTransform.flipY,
   };
+  syncInspectorControlValues(item);
   applyPreviewTransform(item);
   renderTimeline();
   renderTransport();
+}
+
+function readScaleValue() {
+  if (document.activeElement === els.clipScaleNumber) {
+    return roundTime(clamp((Number(els.clipScaleNumber.value) || 100) / 100, 0.1, 2));
+  }
+  return roundTime(clamp(Number(els.clipScale.value) || 1, 0.1, 2));
+}
+
+function readSpeedValue() {
+  if (document.activeElement === els.clipSpeedNumber) {
+    return roundTime(clamp(Number(els.clipSpeedNumber.value) || 1, 0.25, 4));
+  }
+  return roundTime(clamp(Number(els.clipSpeed.value) || 1, 0.25, 4));
+}
+
+function readRotationValue() {
+  if (document.activeElement === els.clipRotationNumber) {
+    return roundTime(clamp(Number(els.clipRotationNumber.value) || 0, -180, 180));
+  }
+  return roundTime(clamp(Number(els.clipRotation.value) || 0, -180, 180));
+}
+
+function readOpacityValue() {
+  if (document.activeElement === els.clipOpacityNumber) {
+    return roundTime(clamp((Number(els.clipOpacityNumber.value) || 0) / 100, 0, 1));
+  }
+  return roundTime(clamp(Number(els.clipOpacity.value) || 1, 0, 1));
+}
+
+function syncInspectorControlValues(item) {
+  const transform = normalizeTransform(item.transform);
+  els.clipSpeed.value = String(clipSpeed(item));
+  els.clipSpeedNumber.value = String(clipSpeed(item));
+  els.clipScale.value = String(transform.scale);
+  els.clipScaleNumber.value = String(Math.round(transform.scale * 100));
+  els.clipRotation.value = String(transform.rotation);
+  els.clipRotationNumber.value = String(transform.rotation);
+  els.clipOpacity.value = String(transform.opacity);
+  els.clipOpacityNumber.value = String(Math.round(transform.opacity * 100));
+  els.flipHButton.classList.toggle("active", transform.flipX);
+  els.flipVButton.classList.toggle("active", transform.flipY);
 }
 
 function updateTrackVolume(trackKey, value) {
@@ -729,6 +815,45 @@ function updateTrackVolume(trackKey, value) {
   track.volume = Number(value);
   for (const clip of track.clips) clip.volume = track.volume;
   renderAudioTimeline();
+}
+
+function toggleSelectedFlip(key) {
+  const item = selectedItem();
+  if (!item) return;
+  pushHistory();
+  const transform = normalizeTransform(item.transform);
+  transform[key] = !transform[key];
+  item.transform = transform;
+  syncInspectorControlValues(item);
+  applyPreviewTransform(item);
+  renderTimeline();
+  setStatus(key === "flipX" ? "Horizontal mirror toggled" : "Vertical mirror toggled");
+}
+
+function resetSelectedInspectorAttributes() {
+  const item = selectedItem();
+  if (!item) return;
+  pushHistory();
+  if (state.inspectorTab === "position") {
+    item.transform = {
+      ...normalizeTransform(item.transform),
+      x: DEFAULT_TRANSFORM.x,
+      y: DEFAULT_TRANSFORM.y,
+      scale: DEFAULT_TRANSFORM.scale,
+      rotation: DEFAULT_TRANSFORM.rotation,
+      flipX: DEFAULT_TRANSFORM.flipX,
+      flipY: DEFAULT_TRANSFORM.flipY,
+    };
+  } else if (state.inspectorTab === "speed") {
+    item.speed = 1;
+  } else if (state.inspectorTab === "blend") {
+    item.transform = {
+      ...normalizeTransform(item.transform),
+      opacity: DEFAULT_TRANSFORM.opacity,
+    };
+  }
+  render();
+  setStatus("Attributes reset");
 }
 
 async function playPreview(startSeconds = currentTimelineSeconds()) {
@@ -1707,12 +1832,16 @@ function normalizeTransform(transform) {
     x: Number(transform?.x ?? DEFAULT_TRANSFORM.x) || 0,
     y: Number(transform?.y ?? DEFAULT_TRANSFORM.y) || 0,
     rotation: Number(transform?.rotation ?? DEFAULT_TRANSFORM.rotation) || 0,
+    flipX: Boolean(transform?.flipX ?? DEFAULT_TRANSFORM.flipX),
+    flipY: Boolean(transform?.flipY ?? DEFAULT_TRANSFORM.flipY),
   };
 }
 
 function applyPreviewTransform(item) {
   const transform = normalizeTransform(item?.transform);
-  els.previewVideo.style.transform = `translate(${transform.x}px, ${transform.y}px) scale(${transform.scale}) rotate(${transform.rotation}deg)`;
+  const scaleX = transform.flipX ? -transform.scale : transform.scale;
+  const scaleY = transform.flipY ? -transform.scale : transform.scale;
+  els.previewVideo.style.transform = `translate(${transform.x}px, ${transform.y}px) scale(${scaleX}, ${scaleY}) rotate(${transform.rotation}deg)`;
   els.previewVideo.style.opacity = String(transform.opacity);
 }
 
