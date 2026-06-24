@@ -1,5 +1,5 @@
 /**
- * OpenReel Service Worker
+ * AI-Video-Stitching-Pipeline Service Worker
  *
  * Handles offline functionality by caching application assets.
  * Implements a cache-first strategy for static assets and network-first for API calls.
@@ -302,7 +302,7 @@ async function getCacheStatus() {
 }
 
 /**
- * Clear all OpenReel caches
+ * Clear all AI-Video-Stitching-Pipeline caches
  */
 async function clearAllCaches() {
   const cacheNames = await caches.keys();

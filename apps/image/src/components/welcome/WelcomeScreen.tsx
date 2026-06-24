@@ -124,8 +124,8 @@ export function WelcomeScreen() {
             <Image size={20} className="text-primary-foreground" />
           </div>
           <div>
-            <h1 className="text-xl font-semibold text-foreground">OpenReel Image</h1>
-            <p className="text-sm text-muted-foreground">Professional Graphic Design Editor</p>
+            <h1 className="text-xl font-semibold text-foreground">AI-Video-Stitching-Pipeline</h1>
+            <p className="text-sm text-muted-foreground">AI-assisted browser video editor</p>
           </div>
         </div>
         <button
@@ -370,7 +370,7 @@ export function WelcomeScreen() {
 
       <footer className="px-8 py-4 border-t border-border flex items-center justify-between">
         <p className="text-xs text-muted-foreground">
-          OpenReel Image — Professional graphic design in your browser
+          AI-Video-Stitching-Pipeline
         </p>
         <p className="text-xs text-muted-foreground">
           100% offline • No account required

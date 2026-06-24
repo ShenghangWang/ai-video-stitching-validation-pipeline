@@ -414,8 +414,8 @@ const DEFAULT_SHORTCUTS: ShortcutDefinition[] = [
 const PRESETS: ShortcutPreset[] = [
   {
     id: "openreel",
-    name: "OpenReel Default",
-    description: "Default OpenReel shortcuts",
+    name: "AI-Video-Stitching-Pipeline Default",
+    description: "Default AI-Video-Stitching-Pipeline shortcuts",
     shortcuts: {},
   },
   {

@@ -1,7 +1,7 @@
 {
-  "name": "OpenReel Image",
-  "short_name": "OpenReel",
-  "description": "Professional browser-based graphic design editor",
+  "name": "AI-Video-Stitching-Pipeline",
+  "short_name": "AI Stitching",
+  "description": "AI-assisted browser video stitching and editing pipeline",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0a0a0a",

@@ -11,7 +11,7 @@ export const TOUR_STEPS: TourStep[] = [
   {
     id: "welcome",
     target: null,
-    title: "Welcome to OpenReel",
+    title: "Welcome to AI-Video-Stitching-Pipeline",
     description: "Let's take a quick tour of the editor",
     position: "center",
   },
