@@ -688,7 +688,7 @@ function renderInspector() {
   els.inspectorTabs.classList.toggle("hidden", !item);
   els.inspectorEmpty.classList.toggle("hidden", Boolean(item));
   els.clipForm.classList.toggle("hidden", !item);
-  els.audioForm.classList.toggle("hidden", !item);
+  els.audioForm.classList.add("hidden");
   if (!item) return;
   renderInspectorTabs();
 
