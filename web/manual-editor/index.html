@@ -168,14 +168,19 @@
           <section class="timeline-panel" aria-label="Timeline">
             <div class="timeline-toolbar">
               <div class="tool-buttons">
-                <button id="selectToolButton" type="button" title="Select">⌁</button>
-                <button id="splitButton" type="button" title="Split at playhead">⌘</button>
-                <button id="linkButton" type="button" title="Link selection">∞</button>
-                <button id="timelineDuplicateButton" type="button" title="Duplicate">▢</button>
-                <button id="timelineDeleteButton" type="button" title="Delete">⌫</button>
+                <button id="selectToolButton" type="button" title="Select"></button>
+                <button id="splitButton" type="button" title="Split at playhead"></button>
+                <button id="trimStartButton" type="button" title="Trim start to playhead"></button>
+                <button id="trimEndButton" type="button" title="Trim end to playhead"></button>
+                <button id="linkButton" type="button" title="Linked selection"></button>
+                <button id="timelineDuplicateButton" type="button" title="Duplicate"></button>
+                <button id="timelineDeleteButton" type="button" title="Delete"></button>
                 <span class="tool-divider" aria-hidden="true"></span>
-                <button id="undoButton" type="button" title="Undo">↶</button>
-                <button id="redoButton" type="button" title="Redo">↷</button>
+                <button id="shieldButton" type="button" title="Lock or unlock video track"></button>
+                <button id="waveformButton" type="button" title="Show or hide waveforms"></button>
+                <span class="tool-divider" aria-hidden="true"></span>
+                <button id="undoButton" type="button" title="Undo"></button>
+                <button id="redoButton" type="button" title="Redo"></button>
               </div>
               <div class="timeline-zoom">
                 <span id="durationReadout">00:00</span>

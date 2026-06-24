@@ -16,7 +16,7 @@ const DEFAULT_TRANSFORM = Object.freeze({
 const state = {
   assets: [],
   timeline: [],
-  videoTrack: { id: "video_track_1", locked: false, hidden: false, solo: false },
+  videoTrack: { id: "video_track_1", locked: false, hidden: false, muted: false, solo: false },
   audioTracks: {
     narration: { id: "narration_track", role: "narration", volume: 1, clips: [], locked: false, muted: false, solo: false },
     music: { id: "music_track", role: "music", volume: 0.35, clips: [], locked: false, muted: false, solo: false },
@@ -34,7 +34,33 @@ const state = {
   future: [],
   restoringHistory: false,
   resizeDrag: null,
+  linkedSelection: false,
+  showWaveforms: true,
 };
+
+const TRACK_DEFAULTS = Object.freeze({ id: "video_track_1", locked: false, hidden: false, muted: false, solo: false });
+
+const ICONS = Object.freeze({
+  select: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3l14 7-6 2.5 4 6-2.8 1.8-4-6L6 20 5 3z"/></svg>',
+  scissors: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="6" r="2.4"/><circle cx="6" cy="18" r="2.4"/><path d="M8 7.5L20 18M8 16.5L20 6"/></svg>',
+  trimStart: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4v16M16 7h-6M16 17h-6M10 7v10"/></svg>',
+  trimEnd: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 4v16M8 7h6M8 17h6M14 7v10"/></svg>',
+  link: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 14.5l5-5M10.5 6.5l1.3-1.3a4 4 0 015.7 5.6l-1.3 1.3M13.5 17.5l-1.3 1.3a4 4 0 01-5.7-5.6l1.3-1.3"/></svg>',
+  duplicate: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="11" height="11" rx="2"/><path d="M5 15V7a2 2 0 012-2h8"/></svg>',
+  trash: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M10 11v6M14 11v6M8 7l1-3h6l1 3M7 7l1 13h8l1-13"/></svg>',
+  shield: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7 3v5c0 4.6-2.7 8-7 10-4.3-2-7-5.4-7-10V6l7-3z"/></svg>',
+  graph: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18h16M6 15l4-5 4 3 4-7"/></svg>',
+  undo: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 7H4v5M5 11a8 8 0 111.8 5"/></svg>',
+  redo: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 7h5v5M19 11a8 8 0 10-1.8 5"/></svg>',
+  video: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="7" width="11" height="10" rx="2"/><path d="M15 10l5-3v10l-5-3z"/></svg>',
+  music: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18a3 3 0 11-2-2.8V6l10-2v11a3 3 0 11-2-2.8V8L9 9.2V18z"/></svg>',
+  lock: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="10" width="12" height="10" rx="2"/><path d="M9 10V7a3 3 0 016 0v3"/></svg>',
+  unlock: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="10" width="12" height="10" rx="2"/><path d="M9 10V7a3 3 0 015.5-1.7"/></svg>',
+  eye: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6z"/><circle cx="12" cy="12" r="2.5"/></svg>',
+  eyeOff: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4l16 16M9.8 5.5A9.8 9.8 0 0112 5c5.5 0 9 7 9 7a16 16 0 01-3 4M6.5 7.5A17 17 0 003 12s3.5 7 9 7a9.8 9.8 0 003.1-.5"/></svg>',
+  speaker: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10v4h4l5 4V6l-5 4H4zM17 9a4 4 0 010 6M19 6a8 8 0 010 12"/></svg>',
+  muted: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10v4h4l5 4V6l-5 4H4zM17 10l4 4M21 10l-4 4"/></svg>',
+});
 
 const els = {
   fileInput: document.getElementById("fileInput"),
@@ -61,10 +87,16 @@ const els = {
   loadButton: document.getElementById("loadButton"),
   undoButton: document.getElementById("undoButton"),
   redoButton: document.getElementById("redoButton"),
+  selectToolButton: document.getElementById("selectToolButton"),
   splitButton: document.getElementById("splitButton"),
+  trimStartButton: document.getElementById("trimStartButton"),
+  trimEndButton: document.getElementById("trimEndButton"),
   linkButton: document.getElementById("linkButton"),
   timelineDuplicateButton: document.getElementById("timelineDuplicateButton"),
   timelineDeleteButton: document.getElementById("timelineDeleteButton"),
+  shieldButton: document.getElementById("shieldButton"),
+  waveformButton: document.getElementById("waveformButton"),
+  timelinePanel: document.querySelector(".timeline-panel"),
   inspectorTabs: document.querySelector(".inspector-tabs"),
   inspectorEmpty: document.getElementById("inspectorEmpty"),
   clipForm: document.getElementById("clipForm"),
@@ -85,6 +117,8 @@ const els = {
   duplicateButton: document.getElementById("duplicateButton"),
   deleteButton: document.getElementById("deleteButton"),
 };
+
+setToolbarIcons();
 
 els.fileInput.addEventListener("change", async (event) => {
   const files = Array.from(event.target.files || []);
@@ -125,10 +159,15 @@ els.saveButton.addEventListener("click", saveLocalProject);
 els.loadButton.addEventListener("click", loadLocalProject);
 els.undoButton.addEventListener("click", undoEdit);
 els.redoButton.addEventListener("click", redoEdit);
+els.selectToolButton.addEventListener("click", () => setStatus("Select tool"));
 els.splitButton.addEventListener("click", splitAtCursor);
-els.linkButton.addEventListener("click", () => setStatus("Linking is not needed for the single video track yet"));
+els.trimStartButton.addEventListener("click", () => trimSelectedVideoToCursor("left"));
+els.trimEndButton.addEventListener("click", () => trimSelectedVideoToCursor("right"));
+els.linkButton.addEventListener("click", toggleLinkedSelection);
 els.timelineDuplicateButton.addEventListener("click", duplicateSelectedItem);
 els.timelineDeleteButton.addEventListener("click", deleteSelectedItem);
+els.shieldButton.addEventListener("click", () => toggleVideoTrack("locked"));
+els.waveformButton.addEventListener("click", toggleWaveformDisplay);
 els.duplicateButton.addEventListener("click", duplicateSelectedItem);
 els.deleteButton.addEventListener("click", deleteSelectedItem);
 els.narrationVolume.addEventListener("input", () => updateTrackVolume("narration", els.narrationVolume.value));
@@ -277,6 +316,7 @@ function render() {
   renderAudioTimeline();
   renderInspector();
   renderTransport(state.cursorSeconds);
+  renderToolbarState();
   els.emptyPreview.classList.toggle("hidden", state.timeline.length > 0);
   applyTrackVisibility();
 }
@@ -461,48 +501,130 @@ function renderAudioTimeline() {
 
 function renderTrackLabels() {
   els.trackLabels.innerHTML = "";
-  els.trackLabels.appendChild(makeTrackLabel({
-    title: "Video",
-    locked: state.videoTrack.locked,
-    visible: !state.videoTrack.hidden,
-    solo: state.videoTrack.solo,
-    onLock: () => toggleVideoTrack("locked"),
-    onVisibility: () => toggleVideoTrack("hidden"),
-    onSolo: () => toggleVideoTrack("solo"),
-  }));
+  els.trackLabels.appendChild(makeVideoTrackLabel());
   for (const [trackKey, track] of Object.entries(state.audioTracks)) {
-    els.trackLabels.appendChild(makeTrackLabel({
-      title: trackKey === "narration" ? "Narr" : "Music",
-      locked: track.locked,
-      visible: !track.muted,
-      solo: track.solo,
-      onLock: () => toggleAudioTrack(trackKey, "locked"),
-      onVisibility: () => toggleAudioTrack(trackKey, "muted"),
-      onSolo: () => toggleAudioTrack(trackKey, "solo"),
-    }));
+    els.trackLabels.appendChild(makeAudioTrackLabel(trackKey, track));
   }
   const spacer = document.createElement("div");
   spacer.className = "track-label spacer";
   els.trackLabels.appendChild(spacer);
 }
 
-function makeTrackLabel({ title, locked, visible, solo, onLock, onVisibility, onSolo }) {
+function makeVideoTrackLabel() {
   const row = document.createElement("div");
-  row.className = "track-label";
-  row.innerHTML = `
-    <span class="track-title"></span>
-    <span class="track-controls">
-      <button type="button" class="${locked ? "active" : ""}" title="${locked ? "Unlock track" : "Lock track"}">L</button>
-      <button type="button" class="${visible ? "active" : ""}" title="${visible ? "Hide or mute track" : "Show or unmute track"}">V</button>
-      <button type="button" class="${solo ? "active" : ""}" title="Solo track">S</button>
-    </span>
-  `;
-  row.querySelector(".track-title").textContent = title;
-  const [lockButton, visibilityButton, soloButton] = row.querySelectorAll("button");
-  lockButton.addEventListener("click", onLock);
-  visibilityButton.addEventListener("click", onVisibility);
-  soloButton.addEventListener("click", onSolo);
+  row.className = "track-label video-track-label";
+  const typeIcon = makeTrackIcon("video", "Video track");
+  const controls = document.createElement("span");
+  controls.className = "track-controls";
+  controls.append(
+    makeTrackControl({
+      iconName: state.videoTrack.locked ? "lock" : "unlock",
+      active: state.videoTrack.locked,
+      label: state.videoTrack.locked ? "Unlock video track" : "Lock video track",
+      onClick: () => toggleVideoTrack("locked"),
+    }),
+    makeTrackControl({
+      iconName: state.videoTrack.hidden ? "eyeOff" : "eye",
+      active: !state.videoTrack.hidden,
+      label: state.videoTrack.hidden ? "Show video track" : "Hide video track",
+      onClick: () => toggleVideoTrack("hidden"),
+    }),
+    makeTrackControl({
+      iconName: state.videoTrack.muted ? "muted" : "speaker",
+      active: !state.videoTrack.muted,
+      label: state.videoTrack.muted ? "Unmute source video audio" : "Mute source video audio",
+      onClick: () => toggleVideoTrack("muted"),
+    }),
+    makeSoloButton(state.videoTrack.solo, () => toggleVideoTrack("solo"), "Solo video track"),
+  );
+  row.append(typeIcon, controls);
   return row;
+}
+
+function makeAudioTrackLabel(trackKey, track) {
+  const row = document.createElement("div");
+  row.className = "track-label audio-track-control-label";
+  const typeIcon = makeTrackIcon("music", `${trackKey} audio track`);
+  const controls = document.createElement("span");
+  controls.className = "track-controls";
+  controls.append(
+    makeTrackControl({
+      iconName: track.locked ? "lock" : "unlock",
+      active: track.locked,
+      label: track.locked ? `Unlock ${trackKey} track` : `Lock ${trackKey} track`,
+      onClick: () => toggleAudioTrack(trackKey, "locked"),
+    }),
+    makeTrackControl({
+      iconName: track.muted ? "muted" : "speaker",
+      active: !track.muted,
+      label: track.muted ? `Unmute ${trackKey} track` : `Mute ${trackKey} track`,
+      onClick: () => toggleAudioTrack(trackKey, "muted"),
+    }),
+    makeSoloButton(track.solo, () => toggleAudioTrack(trackKey, "solo"), `Solo ${trackKey} track`),
+  );
+  row.append(typeIcon, controls);
+  return row;
+}
+
+function makeTrackIcon(iconName, label) {
+  const icon = document.createElement("span");
+  icon.className = "track-type-icon";
+  icon.innerHTML = ICONS[iconName];
+  icon.setAttribute("aria-label", label);
+  icon.setAttribute("role", "img");
+  return icon;
+}
+
+function makeTrackControl({ iconName, active, label, onClick }) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = active ? "active" : "";
+  button.innerHTML = ICONS[iconName];
+  button.title = label;
+  button.setAttribute("aria-label", label);
+  button.addEventListener("click", onClick);
+  return button;
+}
+
+function makeSoloButton(active, onClick, label) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = active ? "active solo" : "solo";
+  button.textContent = "S";
+  button.title = label;
+  button.setAttribute("aria-label", label);
+  button.addEventListener("click", onClick);
+  return button;
+}
+
+function setToolbarIcons() {
+  const icons = [
+    [els.selectToolButton, "select"],
+    [els.splitButton, "scissors"],
+    [els.trimStartButton, "trimStart"],
+    [els.trimEndButton, "trimEnd"],
+    [els.linkButton, "link"],
+    [els.timelineDuplicateButton, "duplicate"],
+    [els.timelineDeleteButton, "trash"],
+    [els.shieldButton, "shield"],
+    [els.waveformButton, "graph"],
+    [els.undoButton, "undo"],
+    [els.redoButton, "redo"],
+  ];
+  for (const [button, iconName] of icons) {
+    if (!button) continue;
+    button.innerHTML = ICONS[iconName];
+    button.setAttribute("aria-label", button.title);
+  }
+}
+
+function renderToolbarState() {
+  els.linkButton.classList.toggle("active", state.linkedSelection);
+  els.shieldButton.classList.toggle("active", state.videoTrack.locked);
+  els.waveformButton.classList.toggle("active", state.showWaveforms);
+  els.timelinePanel.classList.toggle("waveforms-hidden", !state.showWaveforms);
+  els.undoButton.disabled = state.history.length === 0;
+  els.redoButton.disabled = state.future.length === 0;
 }
 
 function renderInspector() {
@@ -608,7 +730,7 @@ function playPreviewItem(item, offset, token) {
     applyPreviewTransform(item);
     const video = els.previewVideo;
     video.src = asset.url;
-    video.muted = item.muted || !shouldPlayVideoTrack();
+    video.muted = shouldMuteVideoItem(item);
     video.playbackRate = clipSpeed(item);
     await waitForEvent(video, "loadedmetadata");
     await seekVideo(video, item.start + offset * clipSpeed(item));
@@ -667,7 +789,7 @@ function seekPreview(seconds) {
   }
   state.selectedItemId = item.id;
   els.previewVideo.src = asset.url;
-  els.previewVideo.muted = item.muted || !shouldPlayVideoTrack();
+  els.previewVideo.muted = shouldMuteVideoItem(item);
   els.previewVideo.playbackRate = clipSpeed(item);
   applyPreviewTransform(item);
   waitForEvent(els.previewVideo, "loadedmetadata")
@@ -676,7 +798,7 @@ function seekPreview(seconds) {
 }
 
 async function exportWebM() {
-  const videoTimeline = shouldPlayVideoTrack() ? state.timeline : [];
+  const videoTimeline = effectiveVideoTimeline();
   const audioTracks = effectiveAudioTracks();
   const { ir, errors, warnings } = buildRendererTimeline({
     assets: state.assets,
@@ -705,12 +827,13 @@ function downloadProjectJson() {
   const payload = buildEditorProject({ assets: state.assets, timeline: state.timeline, audioTracks: state.audioTracks });
   payload.timeline.videoTracks[0].locked = state.videoTrack.locked;
   payload.timeline.videoTracks[0].hidden = state.videoTrack.hidden;
+  payload.timeline.videoTracks[0].muted = state.videoTrack.muted;
   payload.timeline.videoTracks[0].solo = state.videoTrack.solo;
   downloadJson(payload, "manual-editor-project.json");
 }
 
 function downloadBackendJobJson() {
-  const { job, warnings } = buildPipelineJob({ assets: state.assets, timeline: shouldPlayVideoTrack() ? state.timeline : [], audioTracks: effectiveAudioTracks() });
+  const { job, warnings } = buildPipelineJob({ assets: state.assets, timeline: effectiveVideoTimeline(), audioTracks: effectiveAudioTracks() });
   if (warnings.length) {
     setStatus(`Job JSON exported with ${warnings.length} compatibility warning${warnings.length === 1 ? "" : "s"}`);
   }
@@ -813,9 +936,12 @@ function duplicateSelectedItem() {
     setStatus("Video track is locked");
     return;
   }
+  const itemStart = secondsBeforeItem(item.id);
+  const duration = clipTimelineDuration(item);
   pushHistory();
   const index = state.timeline.findIndex((clip) => clip.id === item.id);
   state.timeline.splice(index + 1, 0, { ...structuredClone(item), id: makeId("clip"), name: `${item.name} copy` });
+  if (state.linkedSelection) duplicateLinkedAudioWindow(itemStart, duration);
   state.selectedItemId = state.timeline[index + 1].id;
   render();
 }
@@ -844,6 +970,7 @@ function splitAtCursor() {
   };
   item.end = splitSourceTime;
   state.timeline.splice(position.index + 1, 0, second);
+  if (state.linkedSelection) splitLinkedAudioAtCursor();
   state.selectedItemId = second.id;
   render();
   setStatus("Clip split");
@@ -856,8 +983,12 @@ function deleteSelectedItem() {
     setStatus("Video track is locked");
     return;
   }
+  const item = state.timeline[index];
+  const itemStart = secondsBeforeItem(item.id);
+  const duration = clipTimelineDuration(item);
   pushHistory();
   state.timeline.splice(index, 1);
+  if (state.linkedSelection) rippleDeleteLinkedAudioRange(itemStart, duration);
   state.selectedItemId = state.timeline[Math.min(index, state.timeline.length - 1)]?.id || null;
   render();
 }
@@ -907,12 +1038,119 @@ function trimVideoToCursor(itemId, edge) {
     return;
   }
   pushHistory();
+  const originalDuration = clipTimelineDuration(item);
   if (edge === "left") {
     item.start = clamp(sourceAtCursor, 0, item.end - 0.05);
+    if (state.linkedSelection) rippleDeleteLinkedAudioRange(itemStartOnTimeline, roundTime(originalDuration - clipTimelineDuration(item)));
   } else {
+    const deletedStart = roundTime(itemStartOnTimeline + clipTimelineDuration({ ...item, end: sourceAtCursor }));
     item.end = clamp(sourceAtCursor, item.start + 0.05, asset.duration);
+    if (state.linkedSelection) rippleDeleteLinkedAudioRange(deletedStart, roundTime(originalDuration - clipTimelineDuration(item)));
   }
   render();
+}
+
+function trimSelectedVideoToCursor(edge) {
+  const item = selectedItem();
+  if (!item) {
+    setStatus("Select a video clip before trimming");
+    return;
+  }
+  trimVideoToCursor(item.id, edge);
+}
+
+function splitLinkedAudioAtCursor() {
+  for (const track of Object.values(state.audioTracks)) {
+    if (track.locked) continue;
+    for (let index = 0; index < track.clips.length; index += 1) {
+      const clip = track.clips[index];
+      const clipEnd = roundTime(clip.timelineStart + clip.duration);
+      if (state.cursorSeconds <= clip.timelineStart + 0.05 || state.cursorSeconds >= clipEnd - 0.05) continue;
+      const offset = roundTime(state.cursorSeconds - clip.timelineStart);
+      const second = {
+        ...structuredClone(clip),
+        id: makeId("audio_clip"),
+        name: `${clip.name} part 2`,
+        timelineStart: roundTime(state.cursorSeconds),
+        sourceStart: roundTime(clip.sourceStart + offset),
+        duration: roundTime(clip.duration - offset),
+      };
+      clip.duration = offset;
+      track.clips.splice(index + 1, 0, second);
+      index += 1;
+    }
+  }
+}
+
+function duplicateLinkedAudioWindow(windowStart, duration) {
+  const windowEnd = roundTime(windowStart + duration);
+  const insertStart = windowEnd;
+  for (const track of Object.values(state.audioTracks)) {
+    if (track.locked) continue;
+    const copies = [];
+    for (const clip of track.clips) {
+      const clipEnd = roundTime(clip.timelineStart + clip.duration);
+      const overlapStart = Math.max(clip.timelineStart, windowStart);
+      const overlapEnd = Math.min(clipEnd, windowEnd);
+      if (overlapEnd - overlapStart > 0.05) {
+        copies.push({
+          ...structuredClone(clip),
+          id: makeId("audio_clip"),
+          name: `${clip.name} copy`,
+          timelineStart: roundTime(insertStart + (overlapStart - windowStart)),
+          sourceStart: roundTime(clip.sourceStart + (overlapStart - clip.timelineStart)),
+          duration: roundTime(overlapEnd - overlapStart),
+        });
+      }
+    }
+    for (const clip of track.clips) {
+      if (clip.timelineStart >= insertStart) {
+        clip.timelineStart = roundTime(clip.timelineStart + duration);
+      }
+    }
+    track.clips.push(...copies);
+    track.clips.sort((left, right) => left.timelineStart - right.timelineStart);
+  }
+}
+
+function rippleDeleteLinkedAudioRange(windowStart, duration) {
+  if (duration <= 0.05) return;
+  const windowEnd = roundTime(windowStart + duration);
+  for (const track of Object.values(state.audioTracks)) {
+    if (track.locked) continue;
+    const nextClips = [];
+    for (const clip of track.clips) {
+      const clipStart = clip.timelineStart;
+      const clipEnd = roundTime(clip.timelineStart + clip.duration);
+      if (clipEnd <= windowStart) {
+        nextClips.push(clip);
+      } else if (clipStart >= windowEnd) {
+        clip.timelineStart = roundTime(clip.timelineStart - duration);
+        nextClips.push(clip);
+      } else if (clipStart < windowStart && clipEnd > windowEnd) {
+        const second = {
+          ...structuredClone(clip),
+          id: makeId("audio_clip"),
+          name: `${clip.name} split`,
+          timelineStart: roundTime(windowStart),
+          sourceStart: roundTime(clip.sourceStart + (windowEnd - clipStart)),
+          duration: roundTime(clipEnd - windowEnd),
+        };
+        clip.duration = roundTime(windowStart - clipStart);
+        if (clip.duration > 0.05) nextClips.push(clip);
+        if (second.duration > 0.05) nextClips.push(second);
+      } else if (clipStart < windowStart) {
+        clip.duration = roundTime(windowStart - clipStart);
+        if (clip.duration > 0.05) nextClips.push(clip);
+      } else if (clipEnd > windowEnd) {
+        clip.sourceStart = roundTime(clip.sourceStart + (windowEnd - clipStart));
+        clip.duration = roundTime(clipEnd - windowEnd);
+        clip.timelineStart = roundTime(windowStart);
+        if (clip.duration > 0.05) nextClips.push(clip);
+      }
+    }
+    track.clips = nextClips.sort((left, right) => left.timelineStart - right.timelineStart);
+  }
 }
 
 function trimAudioToCursor(trackKey, clipId, edge) {
@@ -1119,7 +1357,14 @@ function toggleVideoMute(itemId) {
 function toggleVideoTrack(key) {
   pushHistory();
   state.videoTrack[key] = !state.videoTrack[key];
+  const labels = {
+    locked: state.videoTrack.locked ? "Video track locked" : "Video track unlocked",
+    hidden: state.videoTrack.hidden ? "Video track hidden" : "Video track visible",
+    muted: state.videoTrack.muted ? "Source video audio muted" : "Source video audio unmuted",
+    solo: state.videoTrack.solo ? "Video track soloed" : "Video track solo off",
+  };
   render();
+  setStatus(labels[key] || "Video track updated");
 }
 
 function toggleAudioTrack(trackKey, key) {
@@ -1127,7 +1372,25 @@ function toggleAudioTrack(trackKey, key) {
   if (!track) return;
   pushHistory();
   track[key] = !track[key];
+  const labels = {
+    locked: track.locked ? `${trackKey} track locked` : `${trackKey} track unlocked`,
+    muted: track.muted ? `${trackKey} muted` : `${trackKey} unmuted`,
+    solo: track.solo ? `${trackKey} soloed` : `${trackKey} solo off`,
+  };
   render();
+  setStatus(labels[key] || `${trackKey} track updated`);
+}
+
+function toggleLinkedSelection() {
+  state.linkedSelection = !state.linkedSelection;
+  renderToolbarState();
+  setStatus(state.linkedSelection ? "Linked selection on" : "Linked selection off");
+}
+
+function toggleWaveformDisplay() {
+  state.showWaveforms = !state.showWaveforms;
+  renderToolbarState();
+  setStatus(state.showWaveforms ? "Waveforms shown" : "Waveforms hidden");
 }
 
 function undoEdit() {
@@ -1167,7 +1430,7 @@ function cloneEditableState() {
 
 function restoreEditableState(snapshot) {
   state.restoringHistory = true;
-  state.videoTrack = structuredClone(snapshot.videoTrack || { id: "video_track_1", locked: false, hidden: false, solo: false });
+  state.videoTrack = normalizeVideoTrack(snapshot.videoTrack);
   state.timeline = structuredClone(snapshot.timeline || []);
   state.audioTracks = structuredClone(snapshot.audioTracks || {
     narration: { id: "narration_track", role: "narration", volume: 1, clips: [], locked: false, muted: false, solo: false },
@@ -1177,6 +1440,18 @@ function restoreEditableState(snapshot) {
   state.activeItemId = null;
   state.cursorSeconds = Number(snapshot.cursorSeconds) || 0;
   state.restoringHistory = false;
+}
+
+function normalizeVideoTrack(track = {}) {
+  return {
+    ...structuredClone(TRACK_DEFAULTS),
+    ...structuredClone(track || {}),
+    id: track?.id || TRACK_DEFAULTS.id,
+    locked: Boolean(track?.locked),
+    hidden: Boolean(track?.hidden),
+    muted: Boolean(track?.muted),
+    solo: Boolean(track?.solo),
+  };
 }
 
 function makeMiniButton(text, label) {
@@ -1211,6 +1486,18 @@ function shouldPlayVideoTrack() {
   const anySolo = state.videoTrack.solo || Object.values(state.audioTracks).some((track) => track.solo);
   if (state.videoTrack.hidden) return false;
   return !anySolo || state.videoTrack.solo;
+}
+
+function shouldMuteVideoItem(item) {
+  return Boolean(item?.muted || state.videoTrack.muted || !shouldPlayVideoTrack());
+}
+
+function effectiveVideoTimeline() {
+  if (!shouldPlayVideoTrack()) return [];
+  return state.timeline.map((item) => ({
+    ...structuredClone(item),
+    muted: Boolean(item.muted || state.videoTrack.muted),
+  }));
 }
 
 function effectiveAudioTracks() {
