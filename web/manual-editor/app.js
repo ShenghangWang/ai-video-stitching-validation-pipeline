@@ -1288,6 +1288,11 @@ function audioPreviewVolume(trackKey, clip) {
   return clamp(Number(clip.volume ?? track.volume), 0, 1);
 }
 
+function restartAudioPreviewIfPlaying() {
+  if (!state.isPlaying) return;
+  startAudioPreview(currentTimelineSeconds(), state.playToken);
+}
+
 function duplicateSelectedItem() {
   const item = selectedItem();
   if (!item) return;
@@ -1770,7 +1775,7 @@ function toggleVideoMute(itemId) {
 function toggleVideoTrack(key) {
   pushHistory();
   state.videoTrack[key] = !state.videoTrack[key];
-  if (key === "solo") syncActiveAudioPreviewVolumes();
+  if (key === "solo") restartAudioPreviewIfPlaying();
   const labels = {
     locked: state.videoTrack.locked ? "Video track locked" : "Video track unlocked",
     hidden: state.videoTrack.hidden ? "Video track hidden" : "Video track visible",
@@ -1786,7 +1791,7 @@ function toggleAudioTrack(trackKey, key) {
   if (!track) return;
   pushHistory();
   track[key] = !track[key];
-  if (key === "muted" || key === "solo") syncActiveAudioPreviewVolumes();
+  if (key === "muted" || key === "solo") restartAudioPreviewIfPlaying();
   const labels = {
     locked: track.locked ? `${trackKey} track locked` : `${trackKey} track unlocked`,
     muted: track.muted ? `${trackKey} muted` : `${trackKey} unmuted`,
