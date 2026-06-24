@@ -906,7 +906,6 @@ h2 {
 
 .track-labels {
   display: grid;
-  grid-template-rows: 86px 48px 48px 1fr;
   border-right: 1px solid var(--line);
   background: #141414;
   padding-top: 36px;
@@ -1146,7 +1145,7 @@ h2 {
   min-height: 48px;
   border-bottom: 1px dashed #303030;
   display: grid;
-  align-items: center;
+  align-items: stretch;
 }
 
 .audio-track-label {
@@ -1160,9 +1159,14 @@ h2 {
   width: var(--track-width);
 }
 
+.audio-track-clips > .timeline-meta {
+  display: inline-flex;
+  align-items: center;
+  min-height: 48px;
+}
+
 .audio-clip-pill {
   position: absolute;
-  top: 7px;
   display: flex;
   align-items: center;
   min-width: 80px;

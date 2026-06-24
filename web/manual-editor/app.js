@@ -6,6 +6,8 @@ import { MediaRecorderRenderer } from "./renderers/media-recorder-renderer.js";
 const TRACK_PIXEL_WIDTH = 1900;
 const PROJECT_STORE = "manual-editor-project";
 const DEFAULT_IMAGE_DURATION_SECONDS = 5;
+const AUDIO_LANE_HEIGHT = 42;
+const AUDIO_ROW_PADDING = 14;
 const DEFAULT_TRANSFORM = Object.freeze({
   x: 0,
   y: 0,
@@ -568,10 +570,14 @@ function renderAudioTimeline() {
   els.audioTimelineList.innerHTML = "";
   const total = Math.max(projectDuration(), 20);
   for (const [trackKey, track] of Object.entries(state.audioTracks)) {
+    const clipLanes = assignAudioClipLanes(track.clips);
+    const rowHeight = audioTrackRowHeight(track.clips);
     const row = document.createElement("div");
     row.className = "audio-track-row";
+    row.style.minHeight = `${rowHeight}px`;
     const clipsContainer = document.createElement("div");
     clipsContainer.className = "audio-track-clips";
+    clipsContainer.style.minHeight = `${rowHeight}px`;
     if (!track.clips.length) {
       const empty = document.createElement("span");
       empty.className = "timeline-meta";
@@ -579,12 +585,14 @@ function renderAudioTimeline() {
       clipsContainer.appendChild(empty);
     }
     track.clips.forEach((clip) => {
+      const lane = clipLanes.get(clip.id) || 0;
       const asset = state.assets.find((candidate) => candidate.id === clip.assetId);
       const left = (clip.timelineStart / total) * TRACK_PIXEL_WIDTH;
       const width = Math.max(160, Math.min(TRACK_PIXEL_WIDTH, (clip.duration / total) * TRACK_PIXEL_WIDTH));
       const pill = document.createElement("div");
       pill.className = `audio-clip-pill ${track.locked ? "locked" : ""}`;
       pill.style.left = `${left}px`;
+      pill.style.top = `${7 + lane * AUDIO_LANE_HEIGHT}px`;
       pill.style.width = `${width}px`;
       pill.title = asset?.name || clip.name;
       pill.innerHTML = `
@@ -613,6 +621,11 @@ function renderAudioTimeline() {
 
 function renderTrackLabels() {
   els.trackLabels.innerHTML = "";
+  els.trackLabels.style.gridTemplateRows = [
+    "86px",
+    ...Object.values(state.audioTracks).map((track) => `${audioTrackRowHeight(track.clips)}px`),
+    "1fr",
+  ].join(" ");
   els.trackLabels.appendChild(makeVideoTrackLabel());
   for (const [trackKey, track] of Object.entries(state.audioTracks)) {
     els.trackLabels.appendChild(makeAudioTrackLabel(trackKey, track));
@@ -620,6 +633,37 @@ function renderTrackLabels() {
   const spacer = document.createElement("div");
   spacer.className = "track-label spacer";
   els.trackLabels.appendChild(spacer);
+}
+
+function assignAudioClipLanes(clips) {
+  const sortedClips = [...clips].sort((left, right) => {
+    if (left.timelineStart !== right.timelineStart) return left.timelineStart - right.timelineStart;
+    return left.id.localeCompare(right.id);
+  });
+  const laneEnds = [];
+  const lanes = new Map();
+  for (const clip of sortedClips) {
+    const start = Number(clip.timelineStart) || 0;
+    const end = start + (Number(clip.duration) || 0);
+    let laneIndex = laneEnds.findIndex((laneEnd) => start >= laneEnd - 0.01);
+    if (laneIndex < 0) {
+      laneIndex = laneEnds.length;
+      laneEnds.push(0);
+    }
+    laneEnds[laneIndex] = end;
+    lanes.set(clip.id, laneIndex);
+  }
+  return lanes;
+}
+
+function audioTrackLaneCount(clips) {
+  if (!clips.length) return 1;
+  const lanes = assignAudioClipLanes(clips);
+  return Math.max(1, ...Array.from(lanes.values()).map((lane) => lane + 1));
+}
+
+function audioTrackRowHeight(clips) {
+  return audioTrackLaneCount(clips) * AUDIO_LANE_HEIGHT + AUDIO_ROW_PADDING;
 }
 
 function makeVideoTrackLabel() {
