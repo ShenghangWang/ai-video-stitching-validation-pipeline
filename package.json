@@ -1,0 +1,54 @@
+{
+  "name": "ai-car-sales-video-editor",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AI-assisted car sales video editor built on OpenReel and the stitching validation pipeline",
+  "type": "module",
+  "scripts": {
+    "dev": "pnpm --filter @openreel/web dev",
+    "build:wasm": "pnpm --filter @openreel/core build:wasm",
+    "build": "pnpm build:wasm && pnpm --filter @openreel/web build",
+    "preview": "pnpm --filter @openreel/web preview",
+    "deploy": "pnpm build && pnpm --filter @openreel/web deploy",
+    "deploy:preview": "pnpm build && pnpm --filter @openreel/web deploy:preview",
+    "test": "pnpm -r test:run",
+    "test:watch": "pnpm -r test",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "clean": "pnpm -r clean",
+    "pipeline:test": "cd services/stitching-pipeline && python -m pytest",
+    "pipeline:runtime": "cd services/stitching-pipeline && python -m app.runtime",
+    "claude:help": "cat scripts/claude-review.md"
+  },
+  "keywords": [
+    "car-sales-video",
+    "ai-video-editing",
+    "browser-based",
+    "webcodecs",
+    "webgpu",
+    "react",
+    "typescript",
+    "timeline",
+    "video-stitching",
+    "export"
+  ],
+  "license": "UNLICENSED",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ShenghangWang/ai-video-stitching-validation-pipeline.git"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "packageManager": "pnpm@9.0.0",
+  "dependencies": {
+    "@ffmpeg/core": "0.12.6",
+    "@ffmpeg/core-mt": "0.12.6",
+    "mediabunny": "^1.25.3"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ]
+}

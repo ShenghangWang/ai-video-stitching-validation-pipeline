@@ -1,0 +1,26 @@
+{
+  "name": "@car-sales-video/pipeline-adapter",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "import": "./src/index.ts",
+      "types": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@car-sales-video/workflow": "workspace:*",
+    "@openreel/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.25",
+    "@webgpu/types": "^0.1.68",
+    "typescript": "^5.4.5"
+  }
+}

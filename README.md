@@ -1,186 +1,50 @@
-# AI Video Stitching Validation Pipeline
+# AI Car Sales Video Editor
 
-Dockerized Python worker for validating backend video stitching, ordered concatenation, shuffled clip reordering, and explicit timeline assembly for a future AI video production pipeline.
+Browser-first AI video editing product for turning a walk-around car video into a sales pitch video.
 
-## What It Does
+This repo is being migrated from a standalone Python stitching validation pipeline into an OpenReel-based editor product. OpenReel is now the editor foundation; the previous custom manual editor is archived as a legacy MVP.
 
-- Loads JSON job configs through `python -m app.main`.
-- Probes clips with FFprobe and records duration, dimensions, FPS, codecs, and audio presence.
-- Normalizes clips with FFmpeg to MP4/H.264/AAC, `yuv420p`, configured resolution/FPS, 48000 Hz stereo audio.
-- Adds silent audio when an input clip has no audio.
-- Concatenates normalized clips with the FFmpeg concat demuxer.
-- Reorders shuffled clips using first/last boundary frame similarity.
-- Emits structured success/failure metadata for debugging and evaluation.
-- Runs as a Dockerized CLI worker.
-
-## Repository Contents
-
-- `AI Video Stitching Pipeline Specification.pdf` - uploaded source specification
-- `docs/executable_build_plan.md` - Codex execution plan
-- `docs/spec_integrity_review.md` - specification and plan review
-- `docs/acceptance_report.md` - final acceptance notes
-- `source_chinese_complete.mp4` - complete Chinese-language source video
-- `source_english_indoors_complete.mp4` - complete English-language indoor source video
-- `source_english_outdoors_complete.mp4` - complete English-language outdoor source video
-
-## Status
-
-Execution 12 is complete. The MVP worker now includes the full planned implementation path:
-
-- ordered concatenation
-- shuffled reorder and concatenation
-- explicit timeline assembly
-- deterministic test clip generation
-- Docker runtime support
-- unit tests for all core modules
-
-## Local Validation
-
-```bash
-python -m pytest
-```
-
-## Docker
-
-Build the image:
-
-```bash
-docker build -t ai-video-stitcher .
-```
-
-Check runtime dependencies:
-
-```bash
-docker run --rm ai-video-stitcher python -m app.runtime
-docker run --rm ai-video-stitcher ffmpeg -version
-docker run --rm ai-video-stitcher ffprobe -version
-```
-
-## Generate Test Clips
-
-Generate fixed-length clips and matching ordered/shuffled job configs:
-
-```bash
-python scripts/make_test_clips.py \
-  --source source_english_outdoors_complete.mp4 \
-  --output-dir input/generated_clips \
-  --clip-length 5 \
-  --shuffle true \
-  --seed 123
-```
-
-Generated files include:
-
-- `input/generated_clips/ordered_job.json`
-- `input/generated_clips/shuffled_job.json`
-- `input/generated_clips/manifest.json`
-
-## Run Ordered Concatenation
-
-```bash
-python -m app.main \
-  --config input/generated_clips/ordered_job.json \
-  --workdir tmp \
-  --verbose
-```
-
-Docker form:
-
-```bash
-docker run --rm \
-  -v "$(pwd):/workspace" \
-  -w /workspace \
-  ai-video-stitcher \
-  python -m app.main --config input/generated_clips/ordered_job.json --workdir tmp --verbose
-```
-
-## Run Shuffled Reordering
-
-```bash
-python -m app.main \
-  --config input/generated_clips/shuffled_job.json \
-  --workdir tmp \
-  --verbose
-```
-
-The metadata includes:
-
-- `predicted_order`
-- `transition_scores`
-- `confidence_score`
-- `ordering_warnings`
-- `evaluation` when `ground_truth_order` is provided
-
-## Run Timeline Assembly
-
-Use `examples/timeline_job.json` as the shape reference, then replace clip paths with real files:
-
-```bash
-python -m app.main \
-  --config examples/timeline_job.json \
-  --workdir tmp \
-  --verbose
-```
-
-Timeline metadata preserves each clip role in `timeline_roles`.
-
-## Browser Manual Editor
-
-The manual fallback editor lives in `web/manual-editor`. It is a static, pure-browser MVP for local video/audio import, manual clip ordering, trimming, narration/music tracks, preview, and WebM export.
-
-Run it locally:
-
-```bash
-python -m http.server 4173 --directory web/manual-editor
-```
-
-Then open:
+## Product Direction
 
 ```text
-http://127.0.0.1:4173
+walk-around car video
+  -> stitching and validation pipeline
+  -> car-sales timeline adapter
+  -> OpenReel browser editor
+  -> user review and light edits
+  -> browser export
 ```
 
-The editor does not use the shuffled AI ordering algorithm and does not require cloud rendering. See `docs/browser_manual_editor_plan.md` for the architecture decision and limitations.
+## Repository Layout
 
-The renderer migration path is specified in `docs/lightweight_to_full_renderer_spec.md`. The short version is: keep the browser editor project model renderer-neutral, use the current MediaRecorder/WebM path as Renderer V1, and add a WebCodecs renderer later behind the same interface.
+- `apps/web` - OpenReel browser editor app, to be customized for the car-sales workflow.
+- `packages/core`, `packages/ui`, `packages/image-core` - OpenReel editor packages.
+- `packages/car-sales-workflow` - product-specific sales pitch structure and section logic.
+- `packages/pipeline-adapter` - converts stitching pipeline output into an OpenReel project draft.
+- `services/stitching-pipeline` - existing Python AI video stitching validation pipeline.
+- `legacy/manual-editor-mvp` - frozen custom manual editor MVP kept for reference only.
+- `docs/upstream/openreel` - upstream OpenReel README, contributing guide, and MIT license.
 
-Open-source renderer research, commercial dependency gates, and the executable implementation sequence are tracked in `docs/open_source_renderer_research.md`, `docs/commercial_dependency_gate.md`, and `docs/executable_renderer_build_plan.md`.
+## Local Development
 
-The current renderer capability matrix is documented in `docs/current_renderer_capabilities.md`.
-
-Browser editor checks:
+Install the editor workspace:
 
 ```bash
-cd web/manual-editor
-npm run check
-npm test
+pnpm install
 ```
 
-## Metadata
+Run the OpenReel editor:
 
-Every successful job writes a metadata JSON file with:
+```bash
+pnpm dev
+```
 
-- `job_id`, `mode`, `status`, `stage`
-- input clip metadata
-- output video path
-- normalized clip paths and FFmpeg commands
-- concat file path and FFmpeg logs
-- processing time
-- warnings
+Run the Python pipeline tests:
 
-Failed jobs write structured error metadata whenever the metadata path can be determined.
+```bash
+pnpm pipeline:test
+```
 
-## Limitations
+## Migration Rule
 
-- Shuffled ordering is an MVP visual-boundary heuristic, not semantic video understanding.
-- Repeated scenes, fades, hard cuts, or visually similar car angles can reduce ordering confidence.
-- The current transition mode is hard cut only.
-- No API server, job queue, cloud storage, authentication, subtitles, music, or AI narration generation is included.
-- Docker verification depends on network access to Docker Hub and Debian package mirrors.
-
-## Next Steps
-
-- Run generated clip jobs inside Docker against the included source videos.
-- Tune confidence thresholds after collecting real metadata from sample clips.
-- Add CI once repository secrets and runner preferences are decided.
-- Later extensions can add transitions, subtitles, voiceover overlay, object storage, and an API/queue layer.
+Do not continue feature work in `legacy/manual-editor-mvp`. New editor work should target OpenReel packages or product-specific packages layered on top of OpenReel.
