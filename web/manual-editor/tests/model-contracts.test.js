@@ -46,6 +46,7 @@ const timeline = [
     end: 7,
     speed: 2,
     muted: true,
+    hidden: true,
     transform: {
       x: 12,
       y: -8,
@@ -95,6 +96,7 @@ const project = buildEditorProject({ assets, timeline, audioTracks });
 assert.equal(project.schema, "browser-video-editor-project");
 assert.equal(project.assets.length, 3);
 assert.equal(project.timeline.videoTracks[0].clips[0].muted, true);
+assert.equal(project.timeline.videoTracks[0].clips[0].hidden, true);
 assert.equal(project.timeline.videoTracks[0].clips[0].transform.scale, 1.25);
 assert.equal(project.timeline.videoTracks[0].clips[0].sourceDuration, 6);
 assert.equal(project.timeline.videoTracks[0].clips[0].duration, 3);
@@ -113,11 +115,14 @@ assert.equal(ir.tracks[0].clips[0].transform.rotation, 5);
 assert.equal(ir.tracks[0].clips[0].sourceDuration, 6);
 assert.equal(ir.tracks[0].clips[0].duration, 3);
 assert.equal(ir.tracks[0].clips[0].speed, 2);
+assert.equal(ir.tracks[0].clips[0].hidden, true);
 
 const { job, warnings: jobWarnings } = buildPipelineJob({ assets, timeline, audioTracks });
 assert.equal(job.mode, "timeline_assembly");
 assert.equal(job.clips[0].trim_start, 1);
 assert.equal(job.clips[0].muted, true);
+assert.equal(job.clips[0].hidden, true);
 assert.ok(jobWarnings.some((warning) => warning.includes("Independent narration/music")));
 assert.ok(jobWarnings.some((warning) => warning.includes("trim data")));
 assert.ok(jobWarnings.some((warning) => warning.includes("muted")));
+assert.ok(jobWarnings.some((warning) => warning.includes("hidden")));

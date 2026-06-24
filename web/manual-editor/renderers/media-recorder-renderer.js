@@ -101,6 +101,10 @@ async function renderWithMediaRecorder(ir, settings) {
 async function renderVideoClip({ clip, ir, video, context, videoGain, onFirstFrame }) {
   const asset = ir.assets[clip.assetId];
   if (!asset) return;
+  if (clip.hidden) {
+    if (videoGain) videoGain.gain.value = 0;
+    return renderBlankClip({ clip, ir, context, onFirstFrame });
+  }
   if (videoGain) videoGain.gain.value = clip.muted ? 0 : 1;
   video.src = asset.objectUrl;
   video.playbackRate = Number(clip.speed || 1);
@@ -119,6 +123,27 @@ async function renderVideoClip({ clip, ir, video, context, videoGain, onFirstFra
       if (video.currentTime >= clip.sourceStart + (clip.sourceDuration ?? clip.duration) || video.ended) {
         video.pause();
         video.playbackRate = 1;
+        resolve();
+        return;
+      }
+      requestAnimationFrame(draw);
+    };
+    draw();
+  });
+}
+
+function renderBlankClip({ clip, ir, context, onFirstFrame }) {
+  const durationMs = Math.max(0, Number(clip.duration) || 0) * 1000;
+  const startedAt = performance.now();
+  let firstFrameDrawn = false;
+  return new Promise((resolve) => {
+    const draw = () => {
+      if (!firstFrameDrawn) {
+        firstFrameDrawn = true;
+        onFirstFrame();
+      }
+      fillCanvas(context, ir.canvas.width, ir.canvas.height, ir.canvas.background);
+      if (performance.now() - startedAt >= durationMs) {
         resolve();
         return;
       }

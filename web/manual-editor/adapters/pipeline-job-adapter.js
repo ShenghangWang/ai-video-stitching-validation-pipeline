@@ -17,6 +17,10 @@ export function buildPipelineJob({ assets, timeline, audioTracks = {}, settings 
       warnings.push(`Clip "${item.name}" is muted in the browser editor, but the current Python pipeline does not preserve per-clip mute.`);
     }
 
+    if (item.hidden) {
+      warnings.push(`Clip "${item.name}" is hidden in the browser editor, but the current Python pipeline does not preserve hidden clips.`);
+    }
+
     if (item.transform && hasNonDefaultTransform(item.transform)) {
       warnings.push(`Clip "${item.name}" has transform data that the current Python pipeline does not apply.`);
     }
@@ -29,6 +33,7 @@ export function buildPipelineJob({ assets, timeline, audioTracks = {}, settings 
       trim_start: item.start,
       trim_end: item.end,
       muted: item.muted,
+      hidden: Boolean(item.hidden),
     };
   });
 

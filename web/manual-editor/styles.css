@@ -816,6 +816,11 @@ h2 {
   opacity: 0.68;
 }
 
+.timeline-item.hidden-clip {
+  filter: grayscale(1);
+  opacity: 0.52;
+}
+
 .timeline-item.active {
   border-color: #ffd49a;
 }
@@ -947,32 +952,74 @@ h2 {
   position: fixed;
   z-index: 1000;
   display: grid;
-  min-width: 188px;
+  min-width: 280px;
   overflow: hidden;
   border: 1px solid var(--line-strong);
-  border-radius: 8px;
-  background: #202020;
+  border-radius: 12px;
+  background: #1c1c1c;
   box-shadow: 0 16px 36px rgba(0, 0, 0, 0.42);
-  padding: 6px;
+  padding: 10px 12px;
 }
 
-.context-menu button {
-  min-height: 30px;
+.context-menu-item {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
   border: 0;
-  border-radius: 5px;
+  border-radius: 7px;
   background: transparent;
   color: var(--ink);
   cursor: pointer;
-  padding: 0 10px;
+  padding: 0 8px;
   text-align: left;
+  font-size: 19px;
+  font-weight: 700;
 }
 
-.context-menu button:hover {
+.context-menu-item:hover {
   background: #303030;
 }
 
-.context-menu button.danger {
-  color: var(--danger);
+.context-menu-item.danger {
+  color: #ffdddd;
+}
+
+.context-menu-icon {
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+}
+
+.context-menu-icon svg {
+  width: 21px;
+  height: 21px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.context-menu-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.context-menu-shortcut {
+  color: #f0f0f0;
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+.context-menu-separator {
+  height: 1px;
+  margin: 8px 2px;
+  background: var(--line-strong);
 }
 
 .hidden {

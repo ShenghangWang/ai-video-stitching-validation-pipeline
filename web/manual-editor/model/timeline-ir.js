@@ -29,6 +29,7 @@ export function buildRendererTimeline({ assets, timeline, audioTracks, settings 
       duration: clipTimelineDuration(item),
       speed: clipSpeed(item),
       muted: Boolean(item.muted),
+      hidden: Boolean(item.hidden),
       transform: item.transform || {
         x: 0,
         y: 0,

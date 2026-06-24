@@ -25,6 +25,7 @@ export function buildEditorProject({ assets, timeline, audioTracks }) {
       duration: clipTimelineDuration(item),
       speed: clipSpeed(item),
       muted: item.muted,
+      hidden: Boolean(item.hidden),
       transform: {
         x: Number(item.transform?.x ?? 0),
         y: Number(item.transform?.y ?? 0),

@@ -36,6 +36,7 @@ const state = {
   resizeDrag: null,
   linkedSelection: false,
   showWaveforms: true,
+  copiedVideoItem: null,
 };
 
 const TRACK_DEFAULTS = Object.freeze({ id: "video_track_1", locked: false, hidden: false, muted: false, solo: false });
@@ -60,6 +61,7 @@ const ICONS = Object.freeze({
   eyeOff: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4l16 16M9.8 5.5A9.8 9.8 0 0112 5c5.5 0 9 7 9 7a16 16 0 01-3 4M6.5 7.5A17 17 0 003 12s3.5 7 9 7a9.8 9.8 0 003.1-.5"/></svg>',
   speaker: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10v4h4l5 4V6l-5 4H4zM17 9a4 4 0 010 6M19 6a8 8 0 010 12"/></svg>',
   muted: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10v4h4l5 4V6l-5 4H4zM17 10l4 4M21 10l-4 4"/></svg>',
+  hidden: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12s3.5-6 9-6 9 6 9 6a16 16 0 01-3.2 3.8M9.8 17.6A9 9 0 0112 18c-5.5 0-9-6-9-6a15.5 15.5 0 013.1-3.8M4 4l16 16"/></svg>',
 });
 
 const els = {
@@ -192,9 +194,7 @@ els.trackArea.addEventListener("click", (event) => {
 document.addEventListener("pointermove", resizeClipFromPointer);
 document.addEventListener("pointerup", stopClipResize);
 document.addEventListener("click", closeContextMenu);
-document.addEventListener("keydown", (event) => {
-  if (event.key === "Escape") closeContextMenu();
-});
+document.addEventListener("keydown", handleKeyboardShortcuts);
 
 for (const input of [
   els.clipName,
@@ -210,6 +210,36 @@ for (const input of [
   els.clipOpacity,
 ]) {
   input.addEventListener("input", updateSelectedFromForm);
+}
+
+function handleKeyboardShortcuts(event) {
+  if (event.key === "Escape") {
+    closeContextMenu();
+    return;
+  }
+  if (isFormEditingTarget(event.target)) return;
+  const key = event.key.toLowerCase();
+  const command = event.metaKey || event.ctrlKey;
+  if (command && key === "b") {
+    event.preventDefault();
+    splitAtCursor();
+  } else if (command && key === "c") {
+    event.preventDefault();
+    copySelectedItem();
+  } else if (command && key === "d") {
+    event.preventDefault();
+    duplicateSelectedItem();
+  } else if (!command && key === "v") {
+    event.preventDefault();
+    toggleSelectedItemHidden();
+  } else if (event.key === "Backspace" || event.key === "Delete") {
+    event.preventDefault();
+    deleteSelectedItem();
+  }
+}
+
+function isFormEditingTarget(target) {
+  return Boolean(target?.closest?.("input, textarea, select, [contenteditable='true']"));
 }
 
 function createAsset(file) {
@@ -282,6 +312,7 @@ function addAssetToTimeline(asset) {
     end: roundTime(asset.duration),
     speed: 1,
     muted: false,
+    hidden: false,
     transform: { ...DEFAULT_TRANSFORM },
   };
   state.timeline.push(item);
@@ -402,6 +433,7 @@ function renderTimeline() {
       item.id === state.selectedItemId ? "selected" : "",
       item.id === state.activeItemId ? "active" : "",
       state.videoTrack.locked ? "locked" : "",
+      item.hidden ? "hidden-clip" : "",
     ].join(" ");
     card.style.flexBasis = `${width}px`;
     card.draggable = true;
@@ -410,7 +442,7 @@ function renderTimeline() {
       <span class="clip-resize-handle left" data-edge="left" aria-hidden="true"></span>
       <div>
         <div class="timeline-name" title="${escapeHtml(item.name)}">${escapeHtml(item.name)}</div>
-        <div class="timeline-meta">${formatTime(clipTimelineDuration(item))}${clipSpeed(item) !== 1 ? ` | ${clipSpeed(item)}x` : ""}${item.muted ? " | muted" : ""}</div>
+        <div class="timeline-meta">${formatTime(clipTimelineDuration(item))}${clipSpeed(item) !== 1 ? ` | ${clipSpeed(item)}x` : ""}${item.muted ? " | muted" : ""}${item.hidden ? " | hidden" : ""}</div>
       </div>
       <div class="timeline-meta">${escapeHtml(item.role || asset?.name || "clip")}</div>
       <span class="clip-resize-handle right" data-edge="right" aria-hidden="true"></span>
@@ -728,6 +760,12 @@ function playPreviewItem(item, offset, token) {
     state.activeItemId = item.id;
     renderTimeline();
     applyPreviewTransform(item);
+    applyPreviewVisibility(item);
+    if (item.hidden) {
+      await playHiddenPreviewItem(item, offset, token);
+      resolve();
+      return;
+    }
     const video = els.previewVideo;
     video.src = asset.url;
     video.muted = shouldMuteVideoItem(item);
@@ -752,6 +790,31 @@ function playPreviewItem(item, offset, token) {
       renderTransport(timelineSeconds);
       if (video.currentTime >= item.end || video.ended) {
         video.pause();
+        resolve();
+        return;
+      }
+      requestAnimationFrame(tick);
+    };
+    tick();
+  });
+}
+
+function playHiddenPreviewItem(item, offset, token) {
+  els.previewVideo.pause();
+  els.previewVideo.removeAttribute("src");
+  els.previewVideo.load();
+  const remainingMs = Math.max(0, clipTimelineDuration(item) - offset) * 1000;
+  const startedAt = performance.now();
+  return new Promise((resolve) => {
+    const tick = () => {
+      if (token !== state.playToken || !state.isPlaying) {
+        resolve();
+        return;
+      }
+      const elapsedSeconds = (performance.now() - startedAt) / 1000;
+      const timelineSeconds = secondsBeforeItem(item.id) + offset + elapsedSeconds;
+      renderTransport(timelineSeconds);
+      if (elapsedSeconds * 1000 >= remainingMs) {
         resolve();
         return;
       }
@@ -788,6 +851,14 @@ function seekPreview(seconds) {
     return;
   }
   state.selectedItemId = item.id;
+  applyPreviewVisibility(item);
+  if (item.hidden) {
+    els.previewVideo.pause();
+    els.previewVideo.removeAttribute("src");
+    els.previewVideo.load();
+    renderTransport(seconds);
+    return;
+  }
   els.previewVideo.src = asset.url;
   els.previewVideo.muted = shouldMuteVideoItem(item);
   els.previewVideo.playbackRate = clipSpeed(item);
@@ -946,6 +1017,27 @@ function duplicateSelectedItem() {
   render();
 }
 
+async function copySelectedItem() {
+  const item = selectedItem();
+  if (!item) {
+    setStatus("Select a clip before copying");
+    return;
+  }
+  state.copiedVideoItem = structuredClone(item);
+  const payload = {
+    schema: "manual-editor-video-clip",
+    version: 1,
+    copiedAt: new Date().toISOString(),
+    clip: state.copiedVideoItem,
+  };
+  try {
+    await navigator.clipboard?.writeText(JSON.stringify(payload, null, 2));
+    setStatus("Clip copied");
+  } catch {
+    setStatus("Clip copied inside editor");
+  }
+}
+
 function splitAtCursor() {
   if (state.videoTrack.locked) {
     setStatus("Video track is locked");
@@ -991,6 +1083,28 @@ function deleteSelectedItem() {
   if (state.linkedSelection) rippleDeleteLinkedAudioRange(itemStart, duration);
   state.selectedItemId = state.timeline[Math.min(index, state.timeline.length - 1)]?.id || null;
   render();
+}
+
+function toggleSelectedItemHidden() {
+  const item = selectedItem();
+  if (!item) {
+    setStatus("Select a clip before hiding");
+    return;
+  }
+  toggleVideoHidden(item.id);
+}
+
+function toggleVideoHidden(itemId) {
+  if (state.videoTrack.locked) {
+    setStatus("Video track is locked");
+    return;
+  }
+  const item = state.timeline.find((candidate) => candidate.id === itemId);
+  if (!item) return;
+  pushHistory();
+  item.hidden = !item.hidden;
+  render();
+  setStatus(item.hidden ? "Clip hidden" : "Clip shown");
 }
 
 function duplicateAudioClip(trackKey, clipId) {
@@ -1295,12 +1409,11 @@ function openVideoContextMenu(event, item) {
   state.selectedItemId = item.id;
   render();
   openContextMenu(event.clientX, event.clientY, [
-    { label: "Split at playhead", action: splitAtCursor },
-    { label: "Trim start to playhead", action: () => trimVideoToCursor(item.id, "left") },
-    { label: "Trim end to playhead", action: () => trimVideoToCursor(item.id, "right") },
-    { label: item.muted ? "Unmute source audio" : "Mute source audio", action: () => toggleVideoMute(item.id) },
-    { label: "Duplicate", action: duplicateSelectedItem },
-    { label: "Delete", action: deleteSelectedItem, danger: true },
+    { label: "Split", shortcut: "Command+B", icon: "scissors", action: splitAtCursor },
+    { label: "Copy", shortcut: "Command+C", icon: "duplicate", action: copySelectedItem },
+    { label: "Duplicate", shortcut: "Command+D", icon: "duplicate", action: duplicateSelectedItem },
+    { label: item.hidden ? "Show" : "Hide", shortcut: "V", icon: "hidden", action: () => toggleVideoHidden(item.id) },
+    { label: "Delete clip", shortcut: "Backspace", icon: "trash", action: deleteSelectedItem, danger: true, separatorBefore: true },
   ]);
 }
 
@@ -1321,9 +1434,21 @@ function openContextMenu(x, y, actions) {
   menu.style.left = `${x}px`;
   menu.style.top = `${y}px`;
   for (const action of actions) {
+    if (action.separatorBefore) {
+      const separator = document.createElement("div");
+      separator.className = "context-menu-separator";
+      menu.appendChild(separator);
+    }
     const button = document.createElement("button");
     button.type = "button";
-    button.textContent = action.label;
+    button.className = "context-menu-item";
+    button.innerHTML = `
+      <span class="context-menu-icon">${action.icon ? ICONS[action.icon] : ""}</span>
+      <span class="context-menu-label"></span>
+      <span class="context-menu-shortcut"></span>
+    `;
+    button.querySelector(".context-menu-label").textContent = action.label;
+    button.querySelector(".context-menu-shortcut").textContent = action.shortcut || "";
     if (action.danger) button.classList.add("danger");
     button.addEventListener("click", (event) => {
       event.stopPropagation();
@@ -1489,14 +1614,15 @@ function shouldPlayVideoTrack() {
 }
 
 function shouldMuteVideoItem(item) {
-  return Boolean(item?.muted || state.videoTrack.muted || !shouldPlayVideoTrack());
+  return Boolean(item?.muted || item?.hidden || state.videoTrack.muted || !shouldPlayVideoTrack());
 }
 
 function effectiveVideoTimeline() {
   if (!shouldPlayVideoTrack()) return [];
   return state.timeline.map((item) => ({
     ...structuredClone(item),
-    muted: Boolean(item.muted || state.videoTrack.muted),
+    hidden: Boolean(item.hidden),
+    muted: Boolean(item.muted || item.hidden || state.videoTrack.muted),
   }));
 }
 
@@ -1516,7 +1642,11 @@ function effectiveAudioTracks() {
 }
 
 function applyTrackVisibility() {
-  els.previewVideo.classList.toggle("track-hidden", !shouldPlayVideoTrack());
+  applyPreviewVisibility(selectedItem());
+}
+
+function applyPreviewVisibility(item) {
+  els.previewVideo.classList.toggle("track-hidden", !shouldPlayVideoTrack() || Boolean(item?.hidden));
 }
 
 function currentTimelineSeconds() {
