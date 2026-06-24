@@ -40,6 +40,7 @@ const state = {
   showWaveforms: true,
   copiedVideoItem: null,
   inspectorTab: "position",
+  mediaPanelCollapsed: false,
 };
 
 const TRACK_DEFAULTS = Object.freeze({ id: "video_track_1", locked: false, hidden: false, muted: false, solo: false });
@@ -73,6 +74,10 @@ const els = {
   mediaTabs: Array.from(document.querySelectorAll(".media-tab")),
   mediaList: document.getElementById("mediaList"),
   mediaCount: document.getElementById("mediaCount"),
+  workspace: document.querySelector(".workspace"),
+  mediaPanel: document.querySelector(".media-panel"),
+  localMediaRailButton: document.getElementById("localMediaRailButton"),
+  closeMediaPanelButton: document.getElementById("closeMediaPanelButton"),
   timelineList: document.getElementById("timelineList"),
   timelineRuler: document.getElementById("timelineRuler"),
   audioTimelineList: document.getElementById("audioTimelineList"),
@@ -187,6 +192,8 @@ els.flipVButton.addEventListener("click", () => toggleSelectedFlip("flipY"));
 els.resetInspectorButton.addEventListener("click", resetSelectedInspectorAttributes);
 els.narrationVolume.addEventListener("input", () => updateTrackVolume("narration", els.narrationVolume.value));
 els.musicVolume.addEventListener("input", () => updateTrackVolume("music", els.musicVolume.value));
+els.closeMediaPanelButton.addEventListener("click", collapseMediaPanel);
+els.localMediaRailButton.addEventListener("click", openMediaPanel);
 
 els.mediaSearch.addEventListener("input", () => {
   state.mediaSearch = els.mediaSearch.value.trim().toLowerCase();
@@ -364,6 +371,7 @@ function addAudioAssetToTrack(asset, trackKey) {
 }
 
 function render() {
+  renderMediaPanelState();
   renderMedia();
   renderRuler();
   renderTrackLabels();
@@ -401,8 +409,9 @@ function renderMedia() {
   });
   for (const asset of filteredAssets) {
     const row = document.createElement("article");
-    row.className = "media-item";
+    row.className = `media-item media-${asset.kind}`;
     row.innerHTML = `
+      <div class="media-kind-badge">${asset.kind}</div>
       <div>
         <div class="media-name" title="${escapeHtml(asset.name)}">${escapeHtml(asset.name)}</div>
         <div class="media-meta">${asset.kind} | ${formatTime(asset.duration)}${asset.kind === "video" ? ` | ${asset.width}x${asset.height}` : ""}</div>
@@ -432,6 +441,26 @@ function renderMedia() {
     }
     els.mediaList.appendChild(row);
   }
+}
+
+function collapseMediaPanel() {
+  state.mediaPanelCollapsed = true;
+  renderMediaPanelState();
+  setStatus("Local media closed");
+}
+
+function openMediaPanel() {
+  state.mediaPanelCollapsed = false;
+  renderMediaPanelState();
+  setStatus("Local media opened");
+}
+
+function renderMediaPanelState() {
+  els.workspace.classList.toggle("media-panel-collapsed", state.mediaPanelCollapsed);
+  els.mediaPanel.setAttribute("aria-hidden", String(state.mediaPanelCollapsed));
+  els.mediaPanel.toggleAttribute("inert", state.mediaPanelCollapsed);
+  els.closeMediaPanelButton.setAttribute("aria-expanded", String(!state.mediaPanelCollapsed));
+  els.localMediaRailButton.classList.toggle("active", !state.mediaPanelCollapsed);
 }
 
 function renderTimeline() {
