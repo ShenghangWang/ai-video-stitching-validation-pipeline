@@ -58,39 +58,6 @@ const FORMAT_OPTIONS: FormatOption[] = [
   },
 ];
 
-const ProductLogo: React.FC<{ className?: string }> = ({ className = "" }) => (
-  <svg
-    viewBox="0 0 490 490"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-    className={className}
-    aria-hidden="true"
-  >
-    <path
-      d="M245 24.5C123.223 24.5 24.5 123.223 24.5 245s98.723 220.5 220.5 220.5 220.5-98.723 220.5-220.5S366.777 24.5 245 24.5Z"
-      stroke="currentColor"
-      strokeWidth="30.625"
-    />
-    <path
-      d="M145 310c47-75 93-112 138-112 39 0 61 25 61 58 0 37-27 62-66 62-44 0-80-31-112-86"
-      stroke="currentColor"
-      strokeWidth="24.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M145 180h70m-35-35v70M315 145v200M360 145v200"
-      stroke="currentColor"
-      strokeWidth="24.5"
-      strokeLinecap="round"
-    />
-    <path
-      d="M236 245a28 28 0 1 0 0 .1"
-      fill="currentColor"
-    />
-  </svg>
-);
-
 type ViewMode = "home" | "templates" | "recent";
 
 interface WelcomeScreenProps {
@@ -213,10 +180,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ initialTab }) => {
       <div className="relative h-full flex flex-col items-center justify-center px-6">
         <div className="w-full max-w-3xl">
           <div className="flex flex-col items-center text-center mb-12">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-12 h-12 text-primary">
-                <ProductLogo className="w-full h-full" />
-              </div>
+            <div className="mb-6">
               <span className="text-lg sm:text-xl font-semibold text-text-primary tracking-tight">
                 AI-Video-Stitching-Pipeline
               </span>
