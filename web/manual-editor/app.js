@@ -6,6 +6,7 @@ import { MediaRecorderRenderer } from "./renderers/media-recorder-renderer.js";
 const TRACK_PIXEL_WIDTH = 1900;
 const PROJECT_STORE = "manual-editor-project";
 const DEFAULT_IMAGE_DURATION_SECONDS = 5;
+const VIDEO_TRACK_HEIGHT = 86;
 const AUDIO_LANE_HEIGHT = 42;
 const AUDIO_ROW_PADDING = 14;
 const DEFAULT_TRANSFORM = Object.freeze({
@@ -368,6 +369,8 @@ function addAssetToTimeline(asset) {
     assetId: asset.id,
     name: asset.name,
     role: "",
+    timelineStart: 0,
+    trackIndex: 0,
     start: 0,
     end: roundTime(asset.kind === "image" ? DEFAULT_IMAGE_DURATION_SECONDS : asset.duration),
     speed: 1,
@@ -375,6 +378,7 @@ function addAssetToTimeline(asset) {
     hidden: false,
     transform: { ...DEFAULT_TRANSFORM },
   };
+  item.trackIndex = firstAvailableVideoTrackIndex(item.timelineStart, clipTimelineDuration(item));
   state.timeline.push(item);
   return item;
 }
@@ -400,6 +404,7 @@ function addAudioAssetToTrack(asset, trackKey) {
 }
 
 function render() {
+  normalizeVideoTimelineInPlace();
   renderMediaPanelState();
   renderMedia();
   renderRuler();
@@ -496,6 +501,7 @@ function renderTimeline() {
   els.timelineList.innerHTML = "";
   els.durationReadout.textContent = formatTime(projectDuration());
   setPlayheadPosition();
+  els.timelineList.style.minHeight = `${VIDEO_TRACK_HEIGHT}px`;
 
   if (!state.timeline.length) {
     const empty = document.createElement("div");
@@ -505,10 +511,27 @@ function renderTimeline() {
     return;
   }
 
-  state.timeline.forEach((item, index) => {
+  const total = Math.max(projectDuration(), 20);
+  const trackCount = videoTrackCount();
+  els.timelineList.style.minHeight = `${trackCount * VIDEO_TRACK_HEIGHT}px`;
+  for (let trackIndex = 0; trackIndex < trackCount; trackIndex += 1) {
+    const row = document.createElement("div");
+    row.className = "video-track-row";
+    row.style.top = `${trackIndex * VIDEO_TRACK_HEIGHT}px`;
+    row.style.height = `${VIDEO_TRACK_HEIGHT}px`;
+    row.addEventListener("dragover", (event) => event.preventDefault());
+    row.addEventListener("drop", (event) => {
+      event.preventDefault();
+      moveVideoItemToTrack(event.dataTransfer.getData("text/plain"), trackIndex);
+    });
+    els.timelineList.appendChild(row);
+  }
+
+  sortedVideoTimeline().forEach((item) => {
     const asset = assetForItem(item);
     const duration = clipTimelineDuration(item);
-    const width = Math.max(150, Math.min(TRACK_PIXEL_WIDTH, (duration / Math.max(projectDuration(), 20)) * TRACK_PIXEL_WIDTH));
+    const left = (videoTimelineStart(item) / total) * TRACK_PIXEL_WIDTH;
+    const width = Math.max(80, Math.min(TRACK_PIXEL_WIDTH, (duration / total) * TRACK_PIXEL_WIDTH));
     const card = document.createElement("article");
     card.className = [
       "timeline-item",
@@ -517,7 +540,9 @@ function renderTimeline() {
       state.videoTrack.locked ? "locked" : "",
       item.hidden ? "hidden-clip" : "",
     ].join(" ");
-    card.style.flexBasis = `${width}px`;
+    card.style.left = `${left}px`;
+    card.style.top = `${(Number(item.trackIndex) || 0) * VIDEO_TRACK_HEIGHT + 12}px`;
+    card.style.width = `${width}px`;
     card.draggable = true;
     card.draggable = !state.videoTrack.locked;
     card.innerHTML = `
@@ -528,10 +553,6 @@ function renderTimeline() {
       </div>
       <div class="timeline-meta">${escapeHtml(item.role || asset?.name || "clip")}</div>
       <span class="clip-resize-handle right" data-edge="right" aria-hidden="true"></span>
-      <div class="timeline-controls">
-        <button class="mini-button" data-action="left" aria-label="Move left"><</button>
-        <button class="mini-button" data-action="right" aria-label="Move right">></button>
-      </div>
     `;
     card.addEventListener("click", () => {
       state.selectedItemId = item.id;
@@ -549,15 +570,7 @@ function renderTimeline() {
     card.addEventListener("dragover", (event) => event.preventDefault());
     card.addEventListener("drop", (event) => {
       event.preventDefault();
-      moveItemToIndex(event.dataTransfer.getData("text/plain"), index);
-    });
-    card.querySelector('[data-action="left"]').addEventListener("click", (event) => {
-      event.stopPropagation();
-      moveItem(index, index - 1);
-    });
-    card.querySelector('[data-action="right"]').addEventListener("click", (event) => {
-      event.stopPropagation();
-      moveItem(index, index + 1);
+      moveVideoItemToTrack(event.dataTransfer.getData("text/plain"), Number(item.trackIndex) || 0);
     });
     for (const handle of card.querySelectorAll(".clip-resize-handle")) {
       handle.addEventListener("pointerdown", (event) => startVideoResize(event, item, handle.dataset.edge));
@@ -621,12 +634,15 @@ function renderAudioTimeline() {
 
 function renderTrackLabels() {
   els.trackLabels.innerHTML = "";
+  const videoRows = videoTrackCount();
   els.trackLabels.style.gridTemplateRows = [
-    "86px",
+    ...Array.from({ length: videoRows }, () => `${VIDEO_TRACK_HEIGHT}px`),
     ...Object.values(state.audioTracks).map((track) => `${audioTrackRowHeight(track.clips)}px`),
     "1fr",
   ].join(" ");
-  els.trackLabels.appendChild(makeVideoTrackLabel());
+  for (let trackIndex = 0; trackIndex < videoRows; trackIndex += 1) {
+    els.trackLabels.appendChild(makeVideoTrackLabel(trackIndex));
+  }
   for (const [trackKey, track] of Object.entries(state.audioTracks)) {
     els.trackLabels.appendChild(makeAudioTrackLabel(trackKey, track));
   }
@@ -666,9 +682,17 @@ function audioTrackRowHeight(clips) {
   return audioTrackLaneCount(clips) * AUDIO_LANE_HEIGHT + AUDIO_ROW_PADDING;
 }
 
-function makeVideoTrackLabel() {
+function makeVideoTrackLabel(trackIndex = 0) {
   const row = document.createElement("div");
   row.className = "track-label video-track-label";
+  if (trackIndex > 0) {
+    row.appendChild(makeTrackIcon("video", `Video track ${trackIndex + 1}`));
+    const title = document.createElement("span");
+    title.className = "track-title";
+    title.textContent = `V${trackIndex + 1}`;
+    row.appendChild(title);
+    return row;
+  }
   const typeIcon = makeTrackIcon("video", "Video track");
   const controls = document.createElement("span");
   controls.className = "track-controls";
@@ -965,15 +989,27 @@ async function playPreview(startSeconds = currentTimelineSeconds()) {
   const token = state.playToken;
   renderTransport(startSeconds);
   startAudioPreview(startSeconds, token);
+  await syncVideoPreviewAt(startSeconds, token);
+  const total = projectDuration();
+  const startedAt = performance.now() - startSeconds * 1000;
 
-  const startPosition = timelinePositionForSeconds(startSeconds);
-  for (let index = startPosition.index; index < state.timeline.length; index += 1) {
-    if (token !== state.playToken) return;
-    const item = state.timeline[index];
-    const offset = index === startPosition.index ? startPosition.offset : 0;
-    await playPreviewItem(item, offset, token);
-  }
-  if (token === state.playToken) stopPreview(false);
+  const tick = async () => {
+    if (token !== state.playToken || !state.isPlaying) return;
+    const timelineSeconds = Math.min(total, (performance.now() - startedAt) / 1000);
+    state.cursorSeconds = timelineSeconds;
+    renderTransport(timelineSeconds);
+    await syncVideoPreviewAt(timelineSeconds, token);
+    if (timelineSeconds >= total - 0.01) {
+      stopPreview(false);
+      return;
+    }
+    requestAnimationFrame(() => {
+      void tick();
+    });
+  };
+  requestAnimationFrame(() => {
+    void tick();
+  });
 }
 
 function playbackStartSeconds() {
@@ -1036,6 +1072,49 @@ function playPreviewItem(item, offset, token) {
     };
     tick();
   });
+}
+
+async function syncVideoPreviewAt(seconds, token) {
+  const item = videoItemAtTime(seconds);
+  if (!item) {
+    if (state.activeItemId !== null) {
+      state.activeItemId = null;
+      els.previewVideo.pause();
+      els.previewVideo.removeAttribute("src");
+      els.previewVideo.load();
+      hidePreviewImage();
+      renderTimeline();
+    }
+    return;
+  }
+  if (state.activeItemId === item.id) return;
+  const asset = assetForItem(item);
+  state.activeItemId = item.id;
+  renderTimeline();
+  applyPreviewTransform(item);
+  applyPreviewVisibility(item);
+  if (!asset) return;
+  const offset = clamp(seconds - videoTimelineStart(item), 0, clipTimelineDuration(item));
+  if (asset.kind === "image") {
+    els.previewVideo.pause();
+    showPreviewImage(item, asset);
+    return;
+  }
+  hidePreviewImage();
+  const video = els.previewVideo;
+  video.src = asset.url;
+  video.muted = shouldMuteVideoItem(item);
+  video.playbackRate = clipSpeed(item);
+  await waitForEvent(video, "loadedmetadata");
+  if (token !== state.playToken || state.activeItemId !== item.id) return;
+  await seekVideo(video, item.start + offset * clipSpeed(item));
+  if (token !== state.playToken || state.activeItemId !== item.id || !state.isPlaying) return;
+  try {
+    await video.play();
+  } catch {
+    setStatus("Preview playback was blocked by the browser");
+    stopPreview();
+  }
 }
 
 function playHiddenPreviewItem(item, offset, token) {
@@ -1166,10 +1245,12 @@ async function exportWebM() {
 
 function downloadProjectJson() {
   const payload = buildEditorProject({ assets: state.assets, timeline: state.timeline, audioTracks: state.audioTracks });
-  payload.timeline.videoTracks[0].locked = state.videoTrack.locked;
-  payload.timeline.videoTracks[0].hidden = state.videoTrack.hidden;
-  payload.timeline.videoTracks[0].muted = state.videoTrack.muted;
-  payload.timeline.videoTracks[0].solo = state.videoTrack.solo;
+  for (const track of payload.timeline.videoTracks) {
+    track.locked = state.videoTrack.locked;
+    track.hidden = state.videoTrack.hidden;
+    track.muted = state.videoTrack.muted;
+    track.solo = state.videoTrack.solo;
+  }
   downloadJson(payload, "manual-editor-project.json");
 }
 
@@ -1309,10 +1390,12 @@ function duplicateSelectedItem() {
   const itemStart = secondsBeforeItem(item.id);
   const duration = clipTimelineDuration(item);
   pushHistory();
-  const index = state.timeline.findIndex((clip) => clip.id === item.id);
-  state.timeline.splice(index + 1, 0, { ...structuredClone(item), id: makeId("clip"), name: `${item.name} copy` });
+  const copy = { ...structuredClone(item), id: makeId("clip"), name: `${item.name} copy` };
+  copy.timelineStart = roundTime(videoTimelineStart(item) + duration);
+  copy.trackIndex = firstAvailableVideoTrackIndex(copy.timelineStart, duration, copy.id);
+  state.timeline.push(copy);
   if (state.linkedSelection) duplicateLinkedAudioWindow(itemStart, duration);
-  state.selectedItemId = state.timeline[index + 1].id;
+  state.selectedItemId = copy.id;
   render();
 }
 
@@ -1357,10 +1440,11 @@ function splitAtCursor() {
     ...structuredClone(item),
     id: makeId("clip"),
     name: `${item.name} part 2`,
+    timelineStart: roundTime(videoTimelineStart(item) + offset),
     start: splitSourceTime,
   };
   item.end = splitSourceTime;
-  state.timeline.splice(position.index + 1, 0, second);
+  state.timeline.push(second);
   if (state.linkedSelection) splitLinkedAudioAtCursor();
   state.selectedItemId = second.id;
   render();
@@ -1444,7 +1528,7 @@ function trimVideoToCursor(itemId, edge) {
   const item = state.timeline.find((candidate) => candidate.id === itemId);
   const asset = item ? assetForItem(item) : null;
   if (!item || !asset) return;
-  const itemStartOnTimeline = secondsBeforeItem(item.id);
+  const itemStartOnTimeline = videoTimelineStart(item);
   const sourceAtCursor = roundTime(item.start + (state.cursorSeconds - itemStartOnTimeline) * clipSpeed(item));
   if (sourceAtCursor <= item.start || sourceAtCursor >= item.end) {
     setStatus("Move the playhead inside this clip before trimming");
@@ -1454,6 +1538,7 @@ function trimVideoToCursor(itemId, edge) {
   const originalDuration = clipTimelineDuration(item);
   if (edge === "left") {
     item.start = clamp(sourceAtCursor, 0, item.end - 0.05);
+    item.timelineStart = roundTime(state.cursorSeconds);
     if (state.linkedSelection) rippleDeleteLinkedAudioRange(itemStartOnTimeline, roundTime(originalDuration - clipTimelineDuration(item)));
   } else {
     const deletedStart = roundTime(itemStartOnTimeline + clipTimelineDuration({ ...item, end: sourceAtCursor }));
@@ -1598,8 +1683,9 @@ function moveItem(fromIndex, toIndex) {
     return;
   }
   pushHistory();
-  const [item] = state.timeline.splice(fromIndex, 1);
-  state.timeline.splice(toIndex, 0, item);
+  const item = state.timeline[fromIndex];
+  const direction = toIndex > fromIndex ? 1 : -1;
+  item.timelineStart = roundTime(Math.max(0, videoTimelineStart(item) + direction));
   render();
 }
 
@@ -1607,6 +1693,22 @@ function moveItemToIndex(itemId, toIndex) {
   const fromIndex = state.timeline.findIndex((item) => item.id === itemId);
   if (fromIndex < 0 || fromIndex === toIndex) return;
   moveItem(fromIndex, toIndex);
+}
+
+function moveVideoItemToTrack(itemId, trackIndex) {
+  if (state.videoTrack.locked) {
+    setStatus("Video track is locked");
+    return;
+  }
+  const item = state.timeline.find((candidate) => candidate.id === itemId);
+  if (!item) return;
+  const nextTrackIndex = Math.max(0, Math.floor(Number(trackIndex) || 0));
+  if ((Number(item.trackIndex) || 0) === nextTrackIndex) return;
+  pushHistory();
+  item.trackIndex = nextTrackIndex;
+  state.selectedItemId = item.id;
+  render();
+  setStatus(`Moved clip to V${nextTrackIndex + 1}`);
 }
 
 function startVideoResize(event, item, edge) {
@@ -1627,6 +1729,7 @@ function startVideoResize(event, item, edge) {
     startX: event.clientX,
     secondsPerPixel: Math.max(projectDuration(), 20) / TRACK_PIXEL_WIDTH,
     speed: clipSpeed(item),
+    originalTimelineStart: videoTimelineStart(item),
     originalStart: item.start,
     originalEnd: item.end,
     assetDuration: asset.duration,
@@ -1669,7 +1772,10 @@ function resizeClipFromPointer(event) {
     if (!item) return;
     const sourceDelta = roundTime(delta * drag.speed);
     if (drag.edge === "left") {
-      item.start = roundTime(clamp(drag.originalStart + sourceDelta, 0, drag.originalEnd - 0.05));
+      const nextSourceStart = roundTime(clamp(drag.originalStart + sourceDelta, 0, drag.originalEnd - 0.05));
+      const appliedTimelineDelta = roundTime((nextSourceStart - drag.originalStart) / drag.speed);
+      item.start = nextSourceStart;
+      item.timelineStart = roundTime(Math.max(0, drag.originalTimelineStart + appliedTimelineDelta));
     } else {
       item.end = roundTime(clamp(drag.originalEnd + sourceDelta, drag.originalStart + 0.05, drag.assetDuration));
     }
@@ -1902,7 +2008,7 @@ function assetForItem(item) {
 }
 
 function timelineDuration() {
-  return state.timeline.reduce((total, item) => total + clipTimelineDuration(item), 0);
+  return state.timeline.reduce((max, item) => Math.max(max, videoTimelineEnd(item)), 0);
 }
 
 function projectDuration() {
@@ -1925,7 +2031,7 @@ function shouldMuteVideoItem(item) {
 
 function effectiveVideoTimeline() {
   if (!shouldPlayVideoTrack()) return [];
-  return state.timeline.map((item) => ({
+  return sortedVideoTimeline().map((item) => ({
     ...structuredClone(item),
     hidden: Boolean(item.hidden),
     muted: Boolean(item.muted || item.hidden || state.videoTrack.muted),
@@ -1958,32 +2064,96 @@ function applyPreviewVisibility(item) {
 }
 
 function currentTimelineSeconds() {
+  if (state.isPlaying) return state.cursorSeconds;
   const item = state.timeline.find((clip) => clip.id === state.activeItemId);
   if (!item) return state.cursorSeconds;
   if (assetForItem(item)?.kind === "image") return state.cursorSeconds;
-  return secondsBeforeItem(item.id) + Math.max(0, (els.previewVideo.currentTime - item.start) / clipSpeed(item));
+  return videoTimelineStart(item) + Math.max(0, (els.previewVideo.currentTime - item.start) / clipSpeed(item));
 }
 
 function secondsBeforeItem(itemId) {
-  let seconds = 0;
-  for (const item of state.timeline) {
-    if (item.id === itemId) return seconds;
-    seconds += clipTimelineDuration(item);
-  }
-  return seconds;
+  const item = state.timeline.find((candidate) => candidate.id === itemId);
+  return item ? videoTimelineStart(item) : 0;
 }
 
 function timelinePositionForSeconds(seconds) {
-  let remaining = clamp(seconds, 0, timelineDuration());
-  for (let index = 0; index < state.timeline.length; index += 1) {
-    const item = state.timeline[index];
-    const duration = clipTimelineDuration(item);
-    if (remaining <= duration || index === state.timeline.length - 1) {
-      return { index, offset: remaining };
-    }
-    remaining -= duration;
+  const selected = selectedItem();
+  if (selected && seconds >= videoTimelineStart(selected) && seconds <= videoTimelineEnd(selected)) {
+    return {
+      index: state.timeline.findIndex((item) => item.id === selected.id),
+      offset: clamp(seconds - videoTimelineStart(selected), 0, clipTimelineDuration(selected)),
+    };
+  }
+  const item = videoItemAtTime(seconds, { includeHidden: true });
+  if (item) {
+    return {
+      index: state.timeline.findIndex((candidate) => candidate.id === item.id),
+      offset: clamp(seconds - videoTimelineStart(item), 0, clipTimelineDuration(item)),
+    };
   }
   return { index: 0, offset: 0 };
+}
+
+function normalizeVideoTimelineInPlace(timeline = state.timeline) {
+  let legacyStart = 0;
+  for (const item of timeline) {
+    if (!Number.isFinite(Number(item.timelineStart))) {
+      item.timelineStart = roundTime(legacyStart);
+    } else {
+      item.timelineStart = roundTime(Math.max(0, Number(item.timelineStart) || 0));
+    }
+    legacyStart = roundTime(legacyStart + clipTimelineDuration(item));
+    item.trackIndex = Math.max(0, Math.floor(Number(item.trackIndex) || 0));
+  }
+}
+
+function videoTimelineStart(item) {
+  return roundTime(Math.max(0, Number(item?.timelineStart) || 0));
+}
+
+function videoTimelineEnd(item) {
+  return roundTime(videoTimelineStart(item) + clipTimelineDuration(item));
+}
+
+function sortedVideoTimeline() {
+  return [...state.timeline].sort((left, right) => {
+    if ((Number(left.trackIndex) || 0) !== (Number(right.trackIndex) || 0)) return (Number(left.trackIndex) || 0) - (Number(right.trackIndex) || 0);
+    if (videoTimelineStart(left) !== videoTimelineStart(right)) return videoTimelineStart(left) - videoTimelineStart(right);
+    return left.id.localeCompare(right.id);
+  });
+}
+
+function videoTrackCount() {
+  if (!state.timeline.length) return 1;
+  return Math.max(1, ...state.timeline.map((item) => (Number(item.trackIndex) || 0) + 1));
+}
+
+function firstAvailableVideoTrackIndex(start, duration, ignoreId = null) {
+  const end = roundTime(start + duration);
+  for (let trackIndex = 0; trackIndex < Math.max(videoTrackCount() + 1, 2); trackIndex += 1) {
+    const occupied = state.timeline.some((item) => {
+      if (item.id === ignoreId || (Number(item.trackIndex) || 0) !== trackIndex) return false;
+      return rangesOverlap(start, end, videoTimelineStart(item), videoTimelineEnd(item));
+    });
+    if (!occupied) return trackIndex;
+  }
+  return videoTrackCount();
+}
+
+function videoItemAtTime(seconds, options = {}) {
+  const includeHidden = Boolean(options.includeHidden);
+  const candidates = state.timeline.filter((item) => {
+    if (!includeHidden && (item.hidden || !shouldPlayVideoTrack())) return false;
+    return seconds >= videoTimelineStart(item) && seconds < videoTimelineEnd(item);
+  });
+  return candidates.sort((left, right) => {
+    if ((Number(left.trackIndex) || 0) !== (Number(right.trackIndex) || 0)) return (Number(right.trackIndex) || 0) - (Number(left.trackIndex) || 0);
+    return videoTimelineStart(right) - videoTimelineStart(left);
+  })[0] || null;
+}
+
+function rangesOverlap(leftStart, leftEnd, rightStart, rightEnd) {
+  return leftStart < rightEnd - 0.01 && rightStart < leftEnd - 0.01;
 }
 
 function clipSpeed(item) {

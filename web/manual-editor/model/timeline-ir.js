@@ -17,13 +17,18 @@ export function buildRendererTimeline({ assets, timeline, audioTracks, settings 
     };
   }
 
-  const videoClips = timeline.map((item) => {
+  const videoTrackPayload = groupVideoTracks(timeline).map(([trackIndex, clips]) => ({
+    id: `video_track_${trackIndex + 1}`,
+    kind: "video",
+    zIndex: trackIndex,
+    clips: clips.map((item) => {
     const asset = assetMap[item.assetId];
     validateClip({ item, asset, errors, track: "video" });
     return {
       id: item.id,
       assetId: item.assetId,
-      timelineStart: secondsBeforeItem(timeline, item.id),
+      timelineStart: videoTimelineStart(timeline, item),
+      trackIndex: Math.max(0, Math.floor(Number(item.trackIndex) || 0)),
       sourceStart: item.start,
       sourceDuration: roundTime(Math.max(0, item.end - item.start)),
       duration: clipTimelineDuration(item),
@@ -40,7 +45,8 @@ export function buildRendererTimeline({ assets, timeline, audioTracks, settings 
         flipY: false,
       },
     };
-  });
+    }),
+  }));
 
   const audioTrackPayload = Object.values(audioTracks).map((track, index) => ({
     id: track.id,
@@ -62,7 +68,7 @@ export function buildRendererTimeline({ assets, timeline, audioTracks, settings 
     }),
   }));
 
-  if (videoClips.length === 0) {
+  if (timeline.length === 0) {
     warnings.push("Timeline has no video clips.");
   }
 
@@ -79,12 +85,7 @@ export function buildRendererTimeline({ assets, timeline, audioTracks, settings 
       duration: roundTime(Math.max(timelineDuration(timeline), audioTimelineDuration(audioTracks))),
       assets: normalizedAssets,
       tracks: [
-        {
-          id: "video_track_1",
-          kind: "video",
-          zIndex: 0,
-          clips: videoClips,
-        },
+        ...videoTrackPayload,
         ...audioTrackPayload,
       ],
     },
@@ -116,12 +117,18 @@ function audioTimelineDuration(audioTracks) {
 }
 
 function secondsBeforeItem(timeline, itemId) {
+  const item = timeline.find((candidate) => candidate.id === itemId);
+  return item ? videoTimelineStart(timeline, item) : 0;
+}
+
+function videoTimelineStart(timeline, item) {
+  if (Number.isFinite(Number(item?.timelineStart))) return roundTime(Math.max(0, Number(item.timelineStart) || 0));
   let seconds = 0;
-  for (const item of timeline) {
-    if (item.id === itemId) return roundTime(seconds);
-    seconds += clipTimelineDuration(item);
+  for (const candidate of timeline) {
+    if (candidate.id === item?.id) return roundTime(seconds);
+    seconds += clipTimelineDuration(candidate);
   }
-  return roundTime(seconds);
+  return 0;
 }
 
 function clipSpeed(item) {
@@ -134,4 +141,19 @@ function clipTimelineDuration(item) {
 
 function roundTime(value) {
   return Math.round((Number(value) || 0) * 100) / 100;
+}
+
+function groupVideoTracks(timeline) {
+  const grouped = new Map();
+  for (const item of timeline) {
+    const trackIndex = Math.max(0, Math.floor(Number(item.trackIndex) || 0));
+    if (!grouped.has(trackIndex)) grouped.set(trackIndex, []);
+    grouped.get(trackIndex).push(item);
+  }
+  return [...grouped.entries()]
+    .sort(([left], [right]) => left - right)
+    .map(([trackIndex, clips]) => [
+      trackIndex,
+      clips.sort((left, right) => videoTimelineStart(timeline, left) - videoTimelineStart(timeline, right)),
+    ]);
 }

@@ -121,6 +121,32 @@ assert.equal(ir.tracks[0].clips[0].duration, 3);
 assert.equal(ir.tracks[0].clips[0].speed, 2);
 assert.equal(ir.tracks[0].clips[0].hidden, true);
 
+const multiVideoTimeline = [
+  {
+    ...timeline[0],
+    id: "clip_track_1",
+    timelineStart: 0,
+    trackIndex: 0,
+    hidden: false,
+  },
+  {
+    ...timeline[0],
+    id: "clip_track_2",
+    timelineStart: 0,
+    trackIndex: 1,
+    hidden: false,
+  },
+];
+const multiTrackProject = buildEditorProject({ assets, timeline: multiVideoTimeline, audioTracks });
+assert.equal(multiTrackProject.timeline.videoTracks.length, 2);
+assert.equal(multiTrackProject.timeline.videoTracks[1].clips[0].trackIndex, 1);
+assert.equal(multiTrackProject.timeline.duration, 9);
+
+const { ir: multiTrackIr, errors: multiTrackErrors } = buildRendererTimeline({ assets, timeline: multiVideoTimeline, audioTracks });
+assert.deepEqual(multiTrackErrors, []);
+assert.equal(multiTrackIr.tracks.filter((track) => track.kind === "video").length, 2);
+assert.equal(multiTrackIr.tracks[1].zIndex, 1);
+
 const { job, warnings: jobWarnings } = buildPipelineJob({ assets, timeline, audioTracks });
 assert.equal(job.mode, "timeline_assembly");
 assert.equal(job.clips[0].trim_start, 1);

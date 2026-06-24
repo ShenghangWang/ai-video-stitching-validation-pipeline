@@ -1,5 +1,3 @@
-import { getTrack } from "../model/timeline-ir.js";
-
 export const MediaRecorderRenderer = {
   id: "media-recorder",
   label: "MediaRecorder WebM Renderer",
@@ -77,9 +75,13 @@ async function renderWithMediaRecorder(ir, settings) {
       renderStartedAt = performance.now();
       startAudioPlayers(audioPlayers, renderStartedAt);
     };
-    const videoTrack = getTrack(ir, "video");
-    for (const clip of videoTrack?.clips || []) {
-      await renderVideoClip({ clip, ir, video, context, videoGain, onFirstFrame: startRenderClock });
+    for (const segment of buildVideoSegments(ir)) {
+      if (segment.clip) {
+        await renderVideoClip({ ...segment, ir, video, context, videoGain, onFirstFrame: startRenderClock });
+      } else {
+        if (videoGain) videoGain.gain.value = 0;
+        await renderBlankClip({ clip: { duration: segment.duration }, ir, context, onFirstFrame: startRenderClock });
+      }
     }
     if (renderStartedAt === null) startRenderClock();
     await waitForRemainingAudio(ir, renderStartedAt);
@@ -98,25 +100,28 @@ async function renderWithMediaRecorder(ir, settings) {
   };
 }
 
-async function renderVideoClip({ clip, ir, video, context, videoGain, onFirstFrame }) {
+async function renderVideoClip({ clip, sourceOffset = 0, duration = clip.duration, ir, video, context, videoGain, onFirstFrame }) {
   const asset = ir.assets[clip.assetId];
   if (!asset) return;
   if (clip.hidden) {
     if (videoGain) videoGain.gain.value = 0;
-    return renderBlankClip({ clip, ir, context, onFirstFrame });
+    return renderBlankClip({ clip: { ...clip, duration }, ir, context, onFirstFrame });
   }
   if (asset.kind === "image") {
     if (videoGain) videoGain.gain.value = 0;
-    return renderImageClip({ clip, asset, ir, context, onFirstFrame });
+    return renderImageClip({ clip: { ...clip, duration }, asset, ir, context, onFirstFrame });
   }
   if (videoGain) videoGain.gain.value = clip.muted ? 0 : 1;
   video.src = asset.objectUrl;
   video.playbackRate = Number(clip.speed || 1);
   await waitForEvent(video, "loadedmetadata");
-  await seekVideo(video, clip.sourceStart);
+  const speed = Number(clip.speed || 1);
+  const sourceStart = Number(clip.sourceStart || 0) + sourceOffset * speed;
+  await seekVideo(video, sourceStart);
   await video.play();
 
   return new Promise((resolve) => {
+    const startedAt = performance.now();
     let firstFrameDrawn = false;
     const draw = () => {
       if (!firstFrameDrawn) {
@@ -124,7 +129,7 @@ async function renderVideoClip({ clip, ir, video, context, videoGain, onFirstFra
         onFirstFrame();
       }
       drawVideoContain(context, video, ir.canvas.width, ir.canvas.height, ir.canvas.background, clip.transform);
-      if (video.currentTime >= clip.sourceStart + (clip.sourceDuration ?? clip.duration) || video.ended) {
+      if (performance.now() - startedAt >= duration * 1000 || video.ended) {
         video.pause();
         video.playbackRate = 1;
         resolve();
@@ -134,6 +139,46 @@ async function renderVideoClip({ clip, ir, video, context, videoGain, onFirstFra
     };
     draw();
   });
+}
+
+function buildVideoSegments(ir) {
+  const videoTracks = ir.tracks.filter((track) => track.kind === "video");
+  const clips = videoTracks.flatMap((track) => track.clips.map((clip) => ({
+    ...clip,
+    trackZIndex: Number(track.zIndex ?? clip.trackIndex ?? 0),
+  })));
+  const boundaries = new Set([0, Number(ir.duration) || 0]);
+  for (const clip of clips) {
+    const start = Number(clip.timelineStart) || 0;
+    boundaries.add(start);
+    boundaries.add(start + (Number(clip.duration) || 0));
+  }
+  const sortedBoundaries = [...boundaries]
+    .filter((value) => Number.isFinite(value) && value >= 0 && value <= ir.duration)
+    .sort((left, right) => left - right);
+  const segments = [];
+  for (let index = 0; index < sortedBoundaries.length - 1; index += 1) {
+    const start = sortedBoundaries[index];
+    const end = sortedBoundaries[index + 1];
+    const duration = end - start;
+    if (duration <= 0.01) continue;
+    const clip = topVideoClipAt(clips, start + 0.001);
+    segments.push({
+      clip,
+      duration,
+      sourceOffset: clip ? start - Number(clip.timelineStart || 0) : 0,
+    });
+  }
+  return segments;
+}
+
+function topVideoClipAt(clips, seconds) {
+  return clips
+    .filter((clip) => !clip.hidden && seconds >= Number(clip.timelineStart || 0) && seconds < Number(clip.timelineStart || 0) + Number(clip.duration || 0))
+    .sort((left, right) => {
+      if (Number(left.trackZIndex) !== Number(right.trackZIndex)) return Number(right.trackZIndex) - Number(left.trackZIndex);
+      return Number(right.timelineStart || 0) - Number(left.timelineStart || 0);
+    })[0] || null;
 }
 
 async function renderImageClip({ clip, asset, ir, context, onFirstFrame }) {

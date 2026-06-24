@@ -1029,27 +1029,32 @@ h2 {
 }
 
 .timeline-list {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+  position: relative;
+  display: block;
   width: var(--track-width);
   min-height: 86px;
-  padding: 12px 0 12px 0;
+  border-bottom: 1px dashed #303030;
+}
+
+.video-track-row {
+  position: absolute;
+  left: 0;
+  width: var(--track-width);
   border-bottom: 1px dashed #303030;
 }
 
 .timeline-empty {
   display: flex;
   align-items: center;
+  min-height: 86px;
   color: var(--muted);
   padding-left: 16px;
 }
 
 .timeline-item {
-  position: relative;
+  position: absolute;
   display: grid;
   grid-template-rows: 1fr auto;
-  flex: 0 0 210px;
   height: 62px;
   border: 1px solid #262626;
   border-radius: 5px;

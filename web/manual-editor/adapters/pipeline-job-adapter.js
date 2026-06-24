@@ -5,7 +5,12 @@ export function buildPipelineJob({ assets, timeline, audioTracks = {}, settings 
     warnings.push("Independent narration/music tracks are browser-only today and are not represented in the current Python pipeline job.");
   }
 
-  const clips = timeline.map((item, index) => {
+  const clips = [...timeline].sort((left, right) => {
+    const leftStart = Number(left.timelineStart) || 0;
+    const rightStart = Number(right.timelineStart) || 0;
+    if (leftStart !== rightStart) return leftStart - rightStart;
+    return (Number(left.trackIndex) || 0) - (Number(right.trackIndex) || 0);
+  }).map((item, index) => {
     const asset = assets.find((candidate) => candidate.id === item.assetId);
     const duration = Math.max(0, item.end - item.start);
 
@@ -34,6 +39,8 @@ export function buildPipelineJob({ assets, timeline, audioTracks = {}, settings 
       path: `input/browser_uploads/${asset?.file?.name || asset?.name || item.name}`,
       role: item.role || "manual_timeline_clip",
       order: index + 1,
+      timeline_start: Number(item.timelineStart) || 0,
+      track_index: Math.max(0, Math.floor(Number(item.trackIndex) || 0)),
       trim_start: item.start,
       trim_end: item.end,
       muted: item.muted,
