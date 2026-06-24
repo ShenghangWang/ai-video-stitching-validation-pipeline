@@ -161,7 +161,7 @@ els.playButton.addEventListener("click", () => {
   if (state.isPlaying) {
     stopPreview();
   } else {
-    playPreview();
+    playPreview(playbackStartSeconds());
   }
 });
 
@@ -929,6 +929,13 @@ async function playPreview(startSeconds = currentTimelineSeconds()) {
     await playPreviewItem(item, offset, token);
   }
   if (token === state.playToken) stopPreview(false);
+}
+
+function playbackStartSeconds() {
+  const total = projectDuration();
+  if (total <= 0) return 0;
+  const current = clamp(currentTimelineSeconds(), 0, total);
+  return current >= total - 0.05 ? 0 : current;
 }
 
 function playPreviewItem(item, offset, token) {
