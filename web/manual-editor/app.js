@@ -866,9 +866,10 @@ function renderInspector() {
 function renderInspectorTabs() {
   const item = selectedItem();
   const asset = item ? assetForItem(item) : null;
-  if (state.inspectorTab === "audio" && asset?.kind !== "video") state.inspectorTab = "position";
+  const canEditSourceAudio = Boolean(item && asset?.kind !== "image");
+  if (state.inspectorTab === "audio" && !canEditSourceAudio) state.inspectorTab = "position";
   for (const tab of Array.from(els.inspectorTabs.querySelectorAll("[data-inspector-tab]"))) {
-    tab.classList.toggle("hidden", tab.dataset.inspectorTab === "audio" && asset?.kind !== "video");
+    tab.classList.toggle("hidden", tab.dataset.inspectorTab === "audio" && !canEditSourceAudio);
     tab.classList.toggle("active", tab.dataset.inspectorTab === state.inspectorTab);
   }
   for (const panel of Array.from(els.clipForm.querySelectorAll("[data-panel]"))) {
