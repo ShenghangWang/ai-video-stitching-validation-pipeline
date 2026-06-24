@@ -149,7 +149,7 @@ h1 {
 
 .workspace {
   display: grid;
-  grid-template-columns: 64px 286px minmax(0, 1fr);
+  grid-template-columns: 64px 300px minmax(0, 1fr);
   min-height: 0;
   border-bottom: 1px solid var(--line);
   transition: grid-template-columns 180ms ease;
@@ -170,7 +170,7 @@ h1 {
 
 .upper-editor {
   display: grid;
-  grid-template-columns: minmax(420px, 0.95fr) minmax(520px, 2fr);
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
   gap: 4px;
   min-width: 0;
   min-height: 0;
@@ -514,7 +514,7 @@ h2 {
 #previewVideo {
   position: relative;
   z-index: 1;
-  width: min(79%, 889px);
+  width: min(82%, 920px);
   max-height: 100%;
   aspect-ratio: 16 / 9;
   height: auto;
@@ -533,7 +533,7 @@ h2 {
   z-index: 2;
   display: grid;
   place-items: center;
-  width: min(79%, 889px);
+  width: min(82%, 920px);
   max-height: 100%;
   aspect-ratio: 16 / 9;
   background: #000;
@@ -1260,17 +1260,23 @@ h2 {
   display: none !important;
 }
 
+@media (max-width: 1500px) {
+  .upper-editor {
+    grid-template-columns: minmax(440px, 1.45fr) minmax(360px, 1fr);
+  }
+}
+
 @media (max-width: 1200px) {
   body {
     min-width: 980px;
   }
 
   .workspace {
-    grid-template-columns: 58px 220px minmax(0, 1fr);
+    grid-template-columns: 58px 240px minmax(0, 1fr);
   }
 
   .upper-editor {
-    grid-template-columns: minmax(340px, 0.9fr) minmax(430px, 1.6fr);
+    grid-template-columns: minmax(360px, 1.2fr) minmax(340px, 1fr);
   }
 
   .inspector-tabs {
