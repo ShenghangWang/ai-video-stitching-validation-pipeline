@@ -1574,10 +1574,10 @@ function openVideoContextMenu(event, item) {
 function openAudioContextMenu(event, trackKey, clip) {
   event.preventDefault();
   openContextMenu(event.clientX, event.clientY, [
-    { label: "Trim start to playhead", action: () => trimAudioToCursor(trackKey, clip.id, "left") },
-    { label: "Trim end to playhead", action: () => trimAudioToCursor(trackKey, clip.id, "right") },
-    { label: "Duplicate audio", action: () => duplicateAudioClip(trackKey, clip.id) },
-    { label: "Delete audio", action: () => deleteAudioClip(trackKey, clip.id), danger: true },
+    { label: "Trim start to playhead", icon: "trimStart", action: () => trimAudioToCursor(trackKey, clip.id, "left") },
+    { label: "Trim end to playhead", icon: "trimEnd", action: () => trimAudioToCursor(trackKey, clip.id, "right") },
+    { label: "Duplicate audio", shortcut: "Command+D", icon: "duplicate", action: () => duplicateAudioClip(trackKey, clip.id), separatorBefore: true },
+    { label: "Delete audio", shortcut: "Backspace", icon: "trash", action: () => deleteAudioClip(trackKey, clip.id), danger: true, separatorBefore: true },
   ]);
 }
 
