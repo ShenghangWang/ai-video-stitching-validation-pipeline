@@ -1186,6 +1186,7 @@ h2 {
   position: fixed;
   z-index: 1000;
   display: grid;
+  width: 280px;
   min-width: 280px;
   overflow: hidden;
   border: 1px solid var(--line-strong);
