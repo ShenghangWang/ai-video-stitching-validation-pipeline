@@ -46,6 +46,7 @@ const state = {
   restoringHistory: false,
   resizeDrag: null,
   videoMoveDrag: null,
+  audioMoveDrag: null,
   linkedSelection: false,
   showWaveforms: true,
   copiedVideoItem: null,
@@ -625,6 +626,7 @@ function renderAudioTimeline() {
         setStatus(`${trackKey} audio selected: ${asset?.name || clip.name}`);
       });
       pill.addEventListener("contextmenu", (event) => openAudioContextMenu(event, trackKey, clip));
+      pill.addEventListener("pointerdown", (event) => startAudioMove(event, trackKey, clip));
       for (const handle of pill.querySelectorAll(".clip-resize-handle")) {
         handle.addEventListener("pointerdown", (event) => startAudioResize(event, trackKey, clip, handle.dataset.edge));
       }
@@ -1818,6 +1820,26 @@ function startVideoResize(event, item, edge) {
   document.body.classList.add("is-resizing-clip");
 }
 
+function startAudioMove(event, trackKey, clip) {
+  if (event.button !== 0 || event.target.closest(".clip-resize-handle, button")) return;
+  const track = state.audioTracks[trackKey];
+  if (track?.locked) {
+    setStatus(`${trackKey} track is locked`);
+    return;
+  }
+  event.preventDefault();
+  event.stopPropagation();
+  state.audioMoveDrag = {
+    trackKey,
+    id: clip.id,
+    startX: event.clientX,
+    secondsPerPixel: Math.max(projectDuration(), 20) / TRACK_PIXEL_WIDTH,
+    originalTimelineStart: Number(clip.timelineStart) || 0,
+    hasHistory: false,
+  };
+  document.body.classList.add("is-moving-clip");
+}
+
 function startAudioResize(event, trackKey, clip, edge) {
   event.preventDefault();
   event.stopPropagation();
@@ -1846,6 +1868,7 @@ function startAudioResize(event, trackKey, clip, edge) {
 
 function handleTimelinePointerMove(event) {
   moveVideoFromPointer(event);
+  moveAudioFromPointer(event);
   resizeClipFromPointer(event);
 }
 
@@ -1869,6 +1892,24 @@ function moveVideoFromPointer(event) {
   renderTimeline();
   renderTransport();
   renderInspector();
+}
+
+function moveAudioFromPointer(event) {
+  if (!state.audioMoveDrag) return;
+  const drag = state.audioMoveDrag;
+  const track = state.audioTracks[drag.trackKey];
+  const clip = track?.clips.find((candidate) => candidate.id === drag.id);
+  if (!clip) return;
+  const deltaX = event.clientX - drag.startX;
+  if (!drag.hasHistory && Math.abs(deltaX) < 3) return;
+  if (!drag.hasHistory) {
+    pushHistory();
+    drag.hasHistory = true;
+  }
+  const timelineDelta = roundTime(deltaX * drag.secondsPerPixel);
+  clip.timelineStart = roundTime(Math.max(0, drag.originalTimelineStart + timelineDelta));
+  renderAudioTimeline();
+  renderTransport();
 }
 
 function resizeClipFromPointer(event) {
@@ -1912,12 +1953,16 @@ function resizeClipFromPointer(event) {
 
 function stopTimelinePointerInteraction() {
   const wasMoving = Boolean(state.videoMoveDrag);
+  const wasAudioMoving = Boolean(state.audioMoveDrag);
   const wasResizing = Boolean(state.resizeDrag);
+  const shouldRestartAudioPreview = Boolean(state.audioMoveDrag?.hasHistory || (state.resizeDrag?.kind === "audio"));
   state.videoMoveDrag = null;
+  state.audioMoveDrag = null;
   state.resizeDrag = null;
-  if (!wasMoving && !wasResizing) return;
+  if (!wasMoving && !wasAudioMoving && !wasResizing) return;
   document.body.classList.remove("is-resizing-clip");
   document.body.classList.remove("is-moving-clip");
+  if (shouldRestartAudioPreview) restartAudioPreviewIfPlaying();
   render();
 }
 
