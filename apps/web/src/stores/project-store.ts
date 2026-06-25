@@ -204,6 +204,13 @@ export interface ProjectState {
     clipId: string,
     transform: Partial<Transform>,
   ) => boolean;
+  updateClipVolumes: (
+    updates: Array<{
+      clipId: string;
+      volume: number;
+      loudnessMatch?: Record<string, unknown>;
+    }>,
+  ) => boolean;
   updateClipBlendMode: (
     clipId: string,
     blendMode: import("@openreel/core").BlendMode,
@@ -3303,6 +3310,55 @@ export const useProjectStore = create<ProjectState>()(
         }
 
         return false;
+      },
+
+      updateClipVolumes: (updates) => {
+        const { project } = get();
+        const updateByClipId = new Map(
+          updates.map((update) => [update.clipId, update]),
+        );
+        let found = false;
+
+        const newTracks = project.timeline.tracks.map((track) => {
+          let trackChanged = false;
+          const newClips = track.clips.map((clip) => {
+            const update = updateByClipId.get(clip.id);
+            if (!update) {
+              return clip;
+            }
+
+            found = true;
+            trackChanged = true;
+            const volume = Math.max(0, Math.min(4, update.volume));
+            const metadata = update.loudnessMatch
+              ? {
+                  ...(clip.metadata ?? {}),
+                  loudnessMatching: update.loudnessMatch,
+                }
+              : clip.metadata;
+
+            return {
+              ...clip,
+              volume,
+              metadata,
+            };
+          });
+
+          return trackChanged ? { ...track, clips: newClips } : track;
+        });
+
+        if (!found) {
+          return false;
+        }
+
+        set({
+          project: {
+            ...project,
+            timeline: { ...project.timeline, tracks: newTracks },
+            modifiedAt: Date.now(),
+          },
+        });
+        return true;
       },
 
       updateClipBlendMode: (clipId: string, blendMode) => {

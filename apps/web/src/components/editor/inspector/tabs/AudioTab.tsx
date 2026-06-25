@@ -5,6 +5,7 @@ import {
   NoiseReductionSection,
   AudioEffectsSection,
   AudioDuckingSection,
+  LoudnessMatchingSection,
 } from "../";
 import { InspectorSection } from "../shell/InspectorSection";
 
@@ -25,6 +26,15 @@ export const AudioTab: React.FC<AudioTabProps> = ({
 }) => {
   return (
     <>
+      {showAudioEffects && (
+        <InspectorSection
+          title="Loudness Matching"
+          sectionId="loudness-matching"
+          defaultOpen={true}
+        >
+          <LoudnessMatchingSection clipId={clipId} />
+        </InspectorSection>
+      )}
       {showAudioEffects && (
         <InspectorSection
           title="Auto Cut Silence"

@@ -59,7 +59,7 @@ export const GeneralPanel: React.FC = () => {
   }, [draftWidth, draftHeight, applyDimensions]);
 
   const ttsProviders = [
-    { id: "piper", label: "Piper (Free / Built-in)" },
+    { id: "piper", label: "Piper (Hosted demo)" },
     ...SERVICE_REGISTRY.filter(
       (s) => s.id === "elevenlabs" || configuredServices.includes(s.id),
     ),

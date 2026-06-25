@@ -1,7 +1,7 @@
 import type { ElevenLabsModel, Voice } from "./tts-types";
 
 export const TTS_PROVIDERS = [
-  { id: "piper" as const, label: "Piper (Free)", description: "Built-in open-source TTS" },
+  { id: "piper" as const, label: "Piper (Hosted demo)", description: "Hosted Piper-compatible TTS endpoint" },
   { id: "elevenlabs" as const, label: "ElevenLabs", description: "Premium AI voices" },
 ];
 

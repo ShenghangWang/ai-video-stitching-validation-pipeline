@@ -47,6 +47,7 @@ export { StickerPickerPanel } from "./StickerPickerPanel";
 export { AudioEffectsSection } from "./AudioEffectsSection";
 export { AudioDuckingSection } from "./AudioDuckingSection";
 export { AutoCutSilenceSection } from "./AutoCutSilenceSection";
+export { LoudnessMatchingSection } from "./LoudnessMatchingSection";
 export { MusicLibraryPanel } from "./MusicLibraryPanel";
 export { TextToSpeechPanel } from "./TextToSpeechPanel";
 
@@ -94,4 +95,3 @@ export { ParticleEffectsSection } from "./ParticleEffectsSection";
 
 // Text Behind Subject
 export { BehindSubjectSection } from "./BehindSubjectSection";
-

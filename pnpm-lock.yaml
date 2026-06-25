@@ -201,6 +201,9 @@ importers:
       gsap:
         specifier: ^3.14.2
         version: 3.14.2
+      loudness-worklet:
+        specifier: 1.6.9
+        version: 1.6.9
       lucide-react:
         specifier: ^0.555.0
         version: 0.555.0(react@18.3.1)
@@ -2869,6 +2872,9 @@ packages:
   loose-envify@1.4.0:
     resolution: {integrity: sha512-lyuxPGr/Wfhrlem2CL/UcnUc1zcqKAImBDzukY7Y5F/yQiNdko6+fRLevlw1HgMySw7f611UIY408EtxRSoK3Q==}
     hasBin: true
+
+  loudness-worklet@1.6.9:
+    resolution: {integrity: sha512-fqLykkhvfcdNzUUoL0Q4C3sk1BDwAUalDD0TDaytzSdddCZ6bfghh7ZRlJOkMYJ7+RWKrpAqqvuCapBIVgW2Kw==}
 
   loupe@2.3.7:
     resolution: {integrity: sha512-zSMINGVYkdpYSOBmLi0D1Uo7JU9nVdQKrHxC8eYlV+9YKK9WePqAlL7lSlorG/U2Fw1w0hTBmaa/jrQ3UbPHtA==}
@@ -6034,6 +6040,8 @@ snapshots:
   loose-envify@1.4.0:
     dependencies:
       js-tokens: 4.0.0
+
+  loudness-worklet@1.6.9: {}
 
   loupe@2.3.7:
     dependencies:
