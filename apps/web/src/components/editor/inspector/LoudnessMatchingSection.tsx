@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import type { Clip, MediaItem } from "@openreel/core";
-import { Activity, Check, Gauge, Loader2 } from "lucide-react";
+import { Activity, Check, ChevronDown, Gauge, Loader2 } from "lucide-react";
 import { toast } from "../../../stores/notification-store";
 import { useProjectStore } from "../../../stores/project-store";
 import {
@@ -26,7 +26,7 @@ interface LoudnessMatchingSettings {
   scope: MatchScope;
 }
 
-const SETTINGS_STORAGE_KEY = "openreel.loudnessMatching.settings";
+const SETTINGS_STORAGE_KEY = "openreel.loudnessMatching.settings.v2";
 
 const DEFAULT_SETTINGS: LoudnessMatchingSettings = {
   targetLufs: -16,
@@ -87,6 +87,7 @@ export const LoudnessMatchingSection: React.FC<LoudnessMatchingSectionProps> = (
   const updateClipVolumes = useProjectStore((state) => state.updateClipVolumes);
   const [settings, setSettings] = useState(loadSettings);
   const [isRunning, setIsRunning] = useState(false);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [results, setResults] = useState<LoudnessClipResult[]>([]);
   const { targetLufs, peakCeilingDbtp, scope } = settings;
@@ -221,6 +222,7 @@ export const LoudnessMatchingSection: React.FC<LoudnessMatchingSectionProps> = (
   const selectedPreset = LOUDNESS_TARGET_PRESETS.find(
     (preset) => preset.targetLufs === targetLufs,
   );
+  const activePresetLabel = selectedPreset?.label ?? "Custom target";
 
   return (
     <div className="space-y-4 text-xs">
@@ -228,133 +230,159 @@ export const LoudnessMatchingSection: React.FC<LoudnessMatchingSectionProps> = (
         <div className="flex items-start gap-2">
           <Gauge size={16} className="text-accent mt-0.5 shrink-0" />
           <div>
-            <div className="text-text-primary font-medium">LUFS loudness matching</div>
+            <div className="text-text-primary font-medium">Loudness Matching</div>
             <p className="text-text-muted mt-1 leading-relaxed">
-              Measures each audio-bearing clip, applies clip gain, and protects the
-              true-peak ceiling.
+              One-click narration matching using {activePresetLabel} (
+              {formatLufs(targetLufs)}), {peakCeilingDbtp.toFixed(1)} dBTP.
             </p>
           </div>
         </div>
 
-        <label className="block space-y-1.5">
-          <span className="text-text-secondary">Target preset</span>
-          <select
-            value={targetLufs}
-            onChange={(event) =>
-              setSettings((current) => ({
-                ...current,
-                targetLufs: Number(event.target.value),
-              }))
-            }
-            className="w-full rounded-md border border-border bg-background-secondary px-2 py-2 text-text-primary outline-none focus:border-accent"
-            disabled={isRunning}
-          >
-            {!selectedPreset && (
-              <option value={targetLufs}>
-                Custom ({targetLufs.toFixed(1)} LUFS)
-              </option>
-            )}
-            {LOUDNESS_TARGET_PRESETS.map((preset) => (
-              <option key={preset.id} value={preset.targetLufs}>
-                {preset.label} ({preset.targetLufs} LUFS)
-              </option>
-            ))}
-          </select>
-        </label>
+        <button
+          type="button"
+          onClick={() => void runLoudnessMatch(true)}
+          disabled={isRunning}
+          className="flex w-full items-center justify-center gap-2 rounded-md bg-accent px-3 py-2.5 font-semibold text-black hover:brightness-110 disabled:opacity-60"
+        >
+          {isRunning ? <Loader2 size={15} className="animate-spin" /> : <Gauge size={15} />}
+          Loudness Matching
+        </button>
 
-        <label className="block space-y-1.5">
-          <span className="flex items-center justify-between text-text-secondary">
-            <span>Custom target</span>
-            <span className="font-mono text-text-primary">{formatLufs(targetLufs)}</span>
-          </span>
-          <input
-            type="range"
-            min={-30}
-            max={-8}
-            step={0.5}
-            value={targetLufs}
-            onChange={(event) =>
-              setSettings((current) => ({
-                ...current,
-                targetLufs: Number(event.target.value),
-              }))
-            }
-            disabled={isRunning}
-            className="w-full accent-accent"
+        <button
+          type="button"
+          onClick={() => setAdvancedOpen((open) => !open)}
+          className="flex w-full items-center justify-between rounded-md border border-border bg-background-secondary px-2 py-2 text-left font-medium text-text-secondary transition-colors hover:text-text-primary"
+        >
+          <span>Advanced Options</span>
+          <ChevronDown
+            size={14}
+            className={`transition-transform ${advancedOpen ? "" : "-rotate-90"}`}
           />
-        </label>
+        </button>
 
-        <label className="block space-y-1.5">
-          <span className="flex items-center justify-between text-text-secondary">
-            <span>True-peak ceiling</span>
-            <span className="font-mono text-text-primary">{peakCeilingDbtp.toFixed(1)} dBTP</span>
-          </span>
-          <input
-            type="range"
-            min={-6}
-            max={-0.1}
-            step={0.1}
-            value={peakCeilingDbtp}
-            onChange={(event) =>
-              setSettings((current) => ({
-                ...current,
-                peakCeilingDbtp: Number(event.target.value),
-              }))
-            }
-            disabled={isRunning}
-            className="w-full accent-accent"
-          />
-        </label>
+        {advancedOpen && (
+          <div className="space-y-3 rounded-lg border border-border bg-background-secondary/60 p-3">
+            <label className="block space-y-1.5">
+              <span className="text-text-secondary">Target preset</span>
+              <select
+                value={targetLufs}
+                onChange={(event) =>
+                  setSettings((current) => ({
+                    ...current,
+                    targetLufs: Number(event.target.value),
+                  }))
+                }
+                className="w-full rounded-md border border-border bg-background-secondary px-2 py-2 text-text-primary outline-none focus:border-accent"
+                disabled={isRunning}
+              >
+                {!selectedPreset && (
+                  <option value={targetLufs}>
+                    Custom ({targetLufs.toFixed(1)} LUFS)
+                  </option>
+                )}
+                {LOUDNESS_TARGET_PRESETS.map((preset) => (
+                  <option key={preset.id} value={preset.targetLufs}>
+                    {preset.label} ({preset.targetLufs} LUFS)
+                  </option>
+                ))}
+              </select>
+            </label>
 
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            onClick={() =>
-              setSettings((current) => ({ ...current, scope: "selected" }))
-            }
-            className={`rounded-md border px-2 py-2 font-medium transition-colors ${
-              scope === "selected"
-                ? "border-accent bg-accent/15 text-accent"
-                : "border-border bg-background-secondary text-text-secondary hover:text-text-primary"
-            }`}
-            disabled={isRunning}
-          >
-            Selected
-          </button>
-          <button
-            type="button"
-            onClick={() =>
-              setSettings((current) => ({ ...current, scope: "timeline" }))
-            }
-            className={`rounded-md border px-2 py-2 font-medium transition-colors ${
-              scope === "timeline"
-                ? "border-accent bg-accent/15 text-accent"
-                : "border-border bg-background-secondary text-text-secondary hover:text-text-primary"
-            }`}
-            disabled={isRunning}
-          >
-            Timeline
-          </button>
-        </div>
+            <label className="block space-y-1.5">
+              <span className="flex items-center justify-between text-text-secondary">
+                <span>Custom target</span>
+                <span className="font-mono text-text-primary">{formatLufs(targetLufs)}</span>
+              </span>
+              <input
+                type="range"
+                min={-30}
+                max={-8}
+                step={0.5}
+                value={targetLufs}
+                onChange={(event) =>
+                  setSettings((current) => ({
+                    ...current,
+                    targetLufs: Number(event.target.value),
+                  }))
+                }
+                disabled={isRunning}
+                className="w-full accent-accent"
+              />
+            </label>
 
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            onClick={() => void runLoudnessMatch(false)}
-            disabled={isRunning}
-            className="rounded-md border border-border bg-background-secondary px-2 py-2 font-medium text-text-primary hover:bg-background-tertiary disabled:opacity-60"
-          >
-            Analyze
-          </button>
-          <button
-            type="button"
-            onClick={() => void runLoudnessMatch(true)}
-            disabled={isRunning}
-            className="rounded-md bg-accent px-2 py-2 font-semibold text-black hover:brightness-110 disabled:opacity-60"
-          >
-            Match loudness
-          </button>
-        </div>
+            <label className="block space-y-1.5">
+              <span className="flex items-center justify-between text-text-secondary">
+                <span>True-peak ceiling</span>
+                <span className="font-mono text-text-primary">{peakCeilingDbtp.toFixed(1)} dBTP</span>
+              </span>
+              <input
+                type="range"
+                min={-6}
+                max={-0.1}
+                step={0.1}
+                value={peakCeilingDbtp}
+                onChange={(event) =>
+                  setSettings((current) => ({
+                    ...current,
+                    peakCeilingDbtp: Number(event.target.value),
+                  }))
+                }
+                disabled={isRunning}
+                className="w-full accent-accent"
+              />
+            </label>
+
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() =>
+                  setSettings((current) => ({ ...current, scope: "selected" }))
+                }
+                className={`rounded-md border px-2 py-2 font-medium transition-colors ${
+                  scope === "selected"
+                    ? "border-accent bg-accent/15 text-accent"
+                    : "border-border bg-background-secondary text-text-secondary hover:text-text-primary"
+                }`}
+                disabled={isRunning}
+              >
+                Selected
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  setSettings((current) => ({ ...current, scope: "timeline" }))
+                }
+                className={`rounded-md border px-2 py-2 font-medium transition-colors ${
+                  scope === "timeline"
+                    ? "border-accent bg-accent/15 text-accent"
+                    : "border-border bg-background-secondary text-text-secondary hover:text-text-primary"
+                }`}
+                disabled={isRunning}
+              >
+                Timeline
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setSettings(DEFAULT_SETTINGS)}
+                disabled={isRunning}
+                className="rounded-md border border-border bg-background-secondary px-2 py-2 font-medium text-text-secondary hover:text-text-primary disabled:opacity-60"
+              >
+                Reset defaults
+              </button>
+              <button
+                type="button"
+                onClick={() => void runLoudnessMatch(false)}
+                disabled={isRunning}
+                className="rounded-md border border-border bg-background-secondary px-2 py-2 font-medium text-text-primary hover:bg-background-tertiary disabled:opacity-60"
+              >
+                Analyze only
+              </button>
+            </div>
+          </div>
+        )}
 
         {status && (
           <div className="flex items-center gap-2 text-text-muted">
