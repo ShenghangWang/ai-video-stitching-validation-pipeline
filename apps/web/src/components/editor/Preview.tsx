@@ -23,6 +23,7 @@ import { useProjectStore } from "../../stores/project-store";
 import { useTimelineStore } from "../../stores/timeline-store";
 import { useUIStore } from "../../stores/ui-store";
 import { useThemeStore } from "../../stores/theme-store";
+import { isAtTimelineEnd } from "../../utils/playback";
 import { getRenderBridge } from "../../bridges/render-bridge";
 import { getEffectsBridge } from "../../bridges/effects-bridge";
 import {
@@ -1126,6 +1127,7 @@ export const Preview: React.FC = () => {
 
   const rateRef = useRef(playbackRate);
   const startPositionRef = useRef(playheadPosition);
+  const wasPlayingRef = useRef(isPlaying);
 
   // MediaBunny playback resources - map of clipId to resources for multi-track playback
   const playbackResourcesRef = useRef<
@@ -1151,6 +1153,14 @@ export const Preview: React.FC = () => {
     if (!isPlaying) {
       startPositionRef.current = playheadPosition;
     }
+  }, [isPlaying, playheadPosition]);
+
+  useEffect(() => {
+    if (isPlaying && !wasPlayingRef.current) {
+      startPositionRef.current = playheadPosition;
+    }
+
+    wasPlayingRef.current = isPlaying;
   }, [isPlaying, playheadPosition]);
 
   const cleanupPlaybackResources = useCallback(() => {
@@ -6009,6 +6019,15 @@ export const Preview: React.FC = () => {
     seekRelative(5);
   }, [seekRelative]);
 
+  const handleTogglePlayback = useCallback(() => {
+    if (!isPlaying && isAtTimelineEnd(playheadPosition, actualEndTime)) {
+      startPositionRef.current = 0;
+      seekTo(0);
+    }
+
+    togglePlayback();
+  }, [actualEndTime, isPlaying, playheadPosition, seekTo, togglePlayback]);
+
   const handleFullscreen = useCallback(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -6588,9 +6607,7 @@ export const Preview: React.FC = () => {
             <SkipBack size={13} />
           </button>
           <button
-            onClick={() => {
-              togglePlayback();
-            }}
+            onClick={handleTogglePlayback}
             disabled={Boolean(playbackLockedReason)}
             title={playbackLockedReason ?? (isPlaying ? "Pause" : "Play")}
             className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${

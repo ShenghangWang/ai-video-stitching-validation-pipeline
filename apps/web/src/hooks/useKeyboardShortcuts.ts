@@ -6,6 +6,7 @@ import {
 import { useProjectStore } from "../stores/project-store";
 import { useUIStore } from "../stores/ui-store";
 import { useTimelineStore } from "../stores/timeline-store";
+import { isAtTimelineEnd } from "../utils/playback";
 
 export function useKeyboardShortcuts() {
   const [showShortcutsOverlay, setShowShortcutsOverlay] = useState(false);
@@ -28,6 +29,7 @@ export function useKeyboardShortcuts() {
     useUIStore();
   const {
     togglePlayback,
+    playbackState,
     seekRelative,
     seekTo,
     playheadPosition,
@@ -37,8 +39,28 @@ export function useKeyboardShortcuts() {
   } = useTimelineStore();
 
   const handlePlayPause = useCallback(() => {
+    if (playbackState !== "playing") {
+      let maxEnd = 0;
+      for (const track of project.timeline.tracks) {
+        for (const clip of track.clips) {
+          const end = clip.startTime + clip.duration;
+          if (end > maxEnd) maxEnd = end;
+        }
+      }
+
+      if (isAtTimelineEnd(playheadPosition, maxEnd)) {
+        seekTo(0);
+      }
+    }
+
     togglePlayback();
-  }, [togglePlayback]);
+  }, [
+    playbackState,
+    playheadPosition,
+    project.timeline.tracks,
+    seekTo,
+    togglePlayback,
+  ]);
 
   const handleFrameBack = useCallback(() => {
     seekRelative(-1 / 30);
