@@ -47,6 +47,7 @@ export { StickerPickerPanel } from "./StickerPickerPanel";
 export { AudioEffectsSection } from "./AudioEffectsSection";
 export { AudioDuckingSection } from "./AudioDuckingSection";
 export { AutoCutSilenceSection } from "./AutoCutSilenceSection";
+export { VolumeLevelingSection } from "./VolumeLevelingSection";
 export { LoudnessMatchingSection } from "./LoudnessMatchingSection";
 export { MusicLibraryPanel } from "./MusicLibraryPanel";
 export { TextToSpeechPanel } from "./TextToSpeechPanel";

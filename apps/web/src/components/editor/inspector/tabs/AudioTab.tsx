@@ -5,6 +5,7 @@ import {
   NoiseReductionSection,
   AudioEffectsSection,
   AudioDuckingSection,
+  VolumeLevelingSection,
   LoudnessMatchingSection,
 } from "../";
 import { InspectorSection } from "../shell/InspectorSection";
@@ -28,6 +29,15 @@ export const AudioTab: React.FC<AudioTabProps> = ({
     <>
       {showAudioEffects && (
         <InspectorSection
+          title="Volume Leveling"
+          sectionId="volume-leveling"
+          defaultOpen={true}
+        >
+          <VolumeLevelingSection clipId={clipId} />
+        </InspectorSection>
+      )}
+      {showAudioEffects && (
+        <InspectorSection
           title="Loudness Matching"
           sectionId="loudness-matching"
           defaultOpen={true}
@@ -45,7 +55,11 @@ export const AudioTab: React.FC<AudioTabProps> = ({
         </InspectorSection>
       )}
       {clipType === "audio" && (
-        <InspectorSection title="Beat Sync" sectionId="beat-sync" defaultOpen={false}>
+        <InspectorSection
+          title="Beat Sync"
+          sectionId="beat-sync"
+          defaultOpen={false}
+        >
           <AudioTextSyncPanel clipId={clipId} />
         </InspectorSection>
       )}

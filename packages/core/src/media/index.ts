@@ -13,13 +13,21 @@ export {
 // FFmpeg Fallback
 export {
   FFmpegFallback,
+  buildDynaudnormFilter,
   getFFmpegFallback,
   shouldUseProxy,
   getRecommendedProxyPreset,
   PROXY_PRESETS,
   PROXY_THRESHOLDS,
 } from "./ffmpeg-fallback";
-export type { ProxySettings, TranscodeOptions, AudioProbeResult, AudioStreamInfo } from "./ffmpeg-fallback";
+export type {
+  AudioLevelingOptions,
+  DynaudnormFilterOptions,
+  ProxySettings,
+  TranscodeOptions,
+  AudioProbeResult,
+  AudioStreamInfo,
+} from "./ffmpeg-fallback";
 
 // Media Import Service
 export {

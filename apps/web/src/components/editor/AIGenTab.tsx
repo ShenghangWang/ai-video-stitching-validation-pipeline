@@ -7,6 +7,7 @@ import {
   Video,
   Layers,
   ChevronRight,
+  Shuffle,
   Wand2,
   FileStack,
   Volume2,
@@ -18,10 +19,21 @@ import { FilterPresetsPanel } from "./inspector/FilterPresetsPanel";
 import { MusicLibraryPanel } from "./inspector/MusicLibraryPanel";
 import { TemplatesBrowserPanel } from "./inspector/TemplatesBrowserPanel";
 import { MultiCameraPanel } from "./inspector/MultiCameraPanel";
+import { AIClipOrderingPanel } from "./inspector/AIClipOrderingPanel";
+import { StitchingTemplatesPanel } from "./inspector/StitchingTemplatesPanel";
 import { useTtsAudioStore } from "../../stores/tts-store";
 import { toast } from "../../stores/notification-store";
 
-type FeatureId = "templates" | "captions" | "tts" | "filters" | "music" | "multicam" | null;
+type FeatureId =
+  | "stitching-templates"
+  | "clip-ordering"
+  | "templates"
+  | "captions"
+  | "tts"
+  | "filters"
+  | "music"
+  | "multicam"
+  | null;
 
 interface FeatureCardProps {
   icon: React.ElementType;
@@ -59,10 +71,19 @@ const FeatureCard: React.FC<FeatureCardProps> = ({
     <div className="flex items-center gap-3 min-w-0">
       <div
         className={`w-10 h-10 shrink-0 rounded-lg flex items-center justify-center transition-colors ${
-          isActive ? iconBg : "bg-background-secondary group-hover:bg-background-tertiary"
+          isActive
+            ? iconBg
+            : "bg-background-secondary group-hover:bg-background-tertiary"
         }`}
       >
-        <Icon size={20} className={isActive ? iconColor : "text-text-secondary group-hover:text-text-primary"} />
+        <Icon
+          size={20}
+          className={
+            isActive
+              ? iconColor
+              : "text-text-secondary group-hover:text-text-primary"
+          }
+        />
       </div>
       <div className="flex-1 min-w-0 overflow-hidden">
         <div className="flex items-center justify-between gap-2">
@@ -74,7 +95,9 @@ const FeatureCard: React.FC<FeatureCardProps> = ({
             className={`shrink-0 transition-transform ${isActive ? "rotate-90 text-text-primary" : "text-text-muted group-hover:text-text-secondary"}`}
           />
         </div>
-        <p className="text-[10px] text-text-muted mt-0.5 truncate">{description}</p>
+        <p className="text-[10px] text-text-muted mt-0.5 truncate">
+          {description}
+        </p>
       </div>
     </div>
   </button>
@@ -86,11 +109,17 @@ interface FeatureSectionProps {
   children: React.ReactNode;
 }
 
-const FeatureSection: React.FC<FeatureSectionProps> = ({ title, icon: Icon, children }) => (
+const FeatureSection: React.FC<FeatureSectionProps> = ({
+  title,
+  icon: Icon,
+  children,
+}) => (
   <div className="space-y-2 min-w-0">
     <div className="flex items-center gap-2 px-1">
       <Icon size={12} className="text-text-muted shrink-0" />
-      <span className="text-[10px] font-semibold text-text-muted uppercase tracking-wider">{title}</span>
+      <span className="text-[10px] font-semibold text-text-muted uppercase tracking-wider">
+        {title}
+      </span>
     </div>
     <div className="space-y-1.5 min-w-0">{children}</div>
   </div>
@@ -98,14 +127,22 @@ const FeatureSection: React.FC<FeatureSectionProps> = ({ title, icon: Icon, chil
 
 export const AIGenTab: React.FC = () => {
   const [activeFeature, setActiveFeature] = useState<FeatureId>(null);
-  const ttsHasUnsaved = useTtsAudioStore((s) => s.generatedAudio !== null && !s.isAudioSaved);
+  const ttsHasUnsaved = useTtsAudioStore(
+    (s) => s.generatedAudio !== null && !s.isAudioSaved,
+  );
 
-  const navigateAway = useCallback((next: FeatureId) => {
-    if (activeFeature === "tts" && next !== "tts" && ttsHasUnsaved) {
-      toast.warning("Unsaved audio discarded", "Save to media or download next time to keep it.");
-    }
-    setActiveFeature(next);
-  }, [activeFeature, ttsHasUnsaved]);
+  const navigateAway = useCallback(
+    (next: FeatureId) => {
+      if (activeFeature === "tts" && next !== "tts" && ttsHasUnsaved) {
+        toast.warning(
+          "Unsaved audio discarded",
+          "Save to media or download next time to keep it.",
+        );
+      }
+      setActiveFeature(next);
+    },
+    [activeFeature, ttsHasUnsaved],
+  );
 
   const handleFeatureClick = (id: FeatureId) => {
     navigateAway(activeFeature === id ? null : id);
@@ -125,6 +162,10 @@ export const AIGenTab: React.FC = () => {
         return <MusicLibraryPanel />;
       case "multicam":
         return <MultiCameraPanel />;
+      case "clip-ordering":
+        return <AIClipOrderingPanel />;
+      case "stitching-templates":
+        return <StitchingTemplatesPanel />;
       default:
         return null;
     }
@@ -132,7 +173,7 @@ export const AIGenTab: React.FC = () => {
 
   if (activeFeature) {
     return (
-      <div className="flex-1 flex flex-col overflow-y-auto w-full min-w-0">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden w-full min-w-0">
         <button
           onClick={() => navigateAway(null)}
           className="flex items-center gap-2 px-4 py-3 text-text-secondary hover:text-text-primary transition-colors border-b border-border bg-background-secondary shrink-0"
@@ -140,9 +181,9 @@ export const AIGenTab: React.FC = () => {
           <ChevronRight size={14} className="rotate-180" />
           <span className="text-[11px] font-medium">Back to AI Tools</span>
         </button>
-        <ScrollArea className="flex-1 w-full">
-          <div className="p-4 w-full min-w-0 overflow-hidden">{renderActivePanel()}</div>
-        </ScrollArea>
+        <div className="min-h-0 flex-1 w-full overflow-y-auto overflow-x-hidden overscroll-contain custom-scrollbar">
+          <div className="p-4 pb-32 w-full min-w-0">{renderActivePanel()}</div>
+        </div>
       </div>
     );
   }
@@ -154,9 +195,40 @@ export const AIGenTab: React.FC = () => {
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 mb-3">
             <Wand2 size={24} className="text-primary" />
           </div>
-          <h2 className="text-sm font-semibold text-text-primary">AI-Powered Tools</h2>
-          <p className="text-[11px] text-text-muted mt-1">Automate your editing with intelligent features</p>
+          <h2 className="text-sm font-semibold text-text-primary">
+            AI Stitch Tools
+          </h2>
+          <p className="text-[11px] text-text-muted mt-1">
+            Recover clip order and automate assisted edits
+          </p>
         </div>
+
+        <FeatureSection title="AI Stitching" icon={Shuffle}>
+          <FeatureCard
+            icon={Wand2}
+            title="Stitching Templates"
+            description="Build a 7-slot car sales pitch timeline"
+            iconColor="text-orange-400"
+            iconBg="bg-orange-500/20"
+            activeBorder="border-orange-500/50"
+            activeBg="bg-orange-500/10"
+            activeRing="ring-orange-500/30"
+            isActive={activeFeature === "stitching-templates"}
+            onClick={() => handleFeatureClick("stitching-templates")}
+          />
+          <FeatureCard
+            icon={Shuffle}
+            title="AI Clip Ordering"
+            description="Recover continuous-source clip order"
+            iconColor="text-orange-400"
+            iconBg="bg-orange-500/20"
+            activeBorder="border-orange-500/50"
+            activeBg="bg-orange-500/10"
+            activeRing="ring-orange-500/30"
+            isActive={activeFeature === "clip-ordering"}
+            onClick={() => handleFeatureClick("clip-ordering")}
+          />
+        </FeatureSection>
 
         <FeatureSection title="Content Generation" icon={Wand2}>
           <FeatureCard

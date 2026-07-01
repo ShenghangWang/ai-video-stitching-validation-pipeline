@@ -22,6 +22,8 @@ export default [
         ...globals.es2021,
         ...globals.node,
         NodeJS: "readonly",
+        AudioWorkletNodeOptions: "readonly",
+        CanvasImageSource: "readonly",
         CanvasTextAlign: "readonly",
         CanvasTextBaseline: "readonly",
         ImageBitmap: "readonly",

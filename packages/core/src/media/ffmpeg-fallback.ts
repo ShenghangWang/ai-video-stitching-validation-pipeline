@@ -12,11 +12,21 @@ type FFmpegInstance = {
   exec(args: string[]): Promise<number>;
   on(
     event: string,
-    callback: (data: { progress?: number; time?: number; message?: string; type?: string }) => void,
+    callback: (data: {
+      progress?: number;
+      time?: number;
+      message?: string;
+      type?: string;
+    }) => void,
   ): void;
   off(
     event: string,
-    callback?: (data: { progress?: number; time?: number; message?: string; type?: string }) => void,
+    callback?: (data: {
+      progress?: number;
+      time?: number;
+      message?: string;
+      type?: string;
+    }) => void,
   ): void;
   terminate(): void;
 };
@@ -36,6 +46,69 @@ export interface AudioProbeResult {
 
 export interface AudioExtractionOptions {
   onProgress?: (progress: ExportProgress) => void;
+}
+
+export interface DynaudnormFilterOptions {
+  /** Frame length in milliseconds. Smaller values react faster to local changes. */
+  frameLengthMs?: number;
+  /** Gaussian smoothing window size. FFmpeg expects an odd integer. */
+  gaussianSize?: number;
+  /** Peak target, 0.0 to 1.0. */
+  peakValue?: number;
+  /** Maximum gain factor for quiet sections. */
+  maxGain?: number;
+}
+
+export interface AudioLevelingOptions extends AudioExtractionOptions {
+  audioTrackIndex?: number;
+  startTime?: number;
+  duration?: number;
+  filterOptions?: DynaudnormFilterOptions;
+}
+
+const DEFAULT_DYNAUDNORM_FILTER_OPTIONS: Required<DynaudnormFilterOptions> = {
+  frameLengthMs: 250,
+  gaussianSize: 15,
+  peakValue: 0.9,
+  maxGain: 6,
+};
+
+const clampNumber = (value: number, min: number, max: number): number =>
+  Math.max(min, Math.min(max, value));
+
+export function buildDynaudnormFilter(
+  options: DynaudnormFilterOptions = {},
+): string {
+  const frameLengthMs = Math.round(
+    clampNumber(
+      options.frameLengthMs ?? DEFAULT_DYNAUDNORM_FILTER_OPTIONS.frameLengthMs,
+      10,
+      8000,
+    ),
+  );
+  const rawGaussianSize = Math.round(
+    clampNumber(
+      options.gaussianSize ?? DEFAULT_DYNAUDNORM_FILTER_OPTIONS.gaussianSize,
+      3,
+      301,
+    ),
+  );
+  const gaussianSize =
+    rawGaussianSize % 2 === 0 ? rawGaussianSize + 1 : rawGaussianSize;
+  const peakValue = clampNumber(
+    options.peakValue ?? DEFAULT_DYNAUDNORM_FILTER_OPTIONS.peakValue,
+    0.1,
+    0.99,
+  );
+  const maxGain = clampNumber(
+    options.maxGain ?? DEFAULT_DYNAUDNORM_FILTER_OPTIONS.maxGain,
+    1,
+    100,
+  );
+
+  return `dynaudnorm=f=${frameLengthMs}:g=${gaussianSize}:p=${peakValue.toFixed(
+    2,
+  )}:m=${maxGain}`;
 }
 
 export interface ProxySettings {
@@ -104,7 +177,12 @@ export class FFmpegFallback {
   private loaded = false;
   private loading: Promise<void> | null = null;
   private progressCallback:
-    | ((data: { progress?: number; time?: number; message?: string; type?: string }) => void)
+    | ((data: {
+        progress?: number;
+        time?: number;
+        message?: string;
+        type?: string;
+      }) => void)
     | null = null;
 
   private calculateBufsize(bitrate: string): string {
@@ -130,7 +208,8 @@ export class FFmpegFallback {
 
       this.ffmpeg = new FFmpeg() as unknown as FFmpegInstance;
 
-      const useMultiThread = typeof crossOriginIsolated !== "undefined" && crossOriginIsolated;
+      const useMultiThread =
+        typeof crossOriginIsolated !== "undefined" && crossOriginIsolated;
       const baseURL = useMultiThread
         ? "https://unpkg.com/@ffmpeg/core-mt@0.12.6/dist/esm"
         : "https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm";
@@ -304,8 +383,9 @@ export class FFmpegFallback {
     await this.load();
     this.ensureLoaded();
 
-    const inputFilename = "input";
-    const outputFilename = "output.wav";
+    const suffix = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const inputFilename = `audio-input-${suffix}`;
+    const outputFilename = `audio-output-${suffix}.wav`;
 
     try {
       const inputData = await this.fileToUint8Array(file);
@@ -319,11 +399,85 @@ export class FFmpegFallback {
         args.push("-vn");
       }
       args.push(
-        "-acodec", "pcm_f32le",
-        "-ar", "48000",
-        "-ac", "2",
+        "-acodec",
+        "pcm_f32le",
+        "-ar",
+        "48000",
+        "-ac",
+        "2",
         outputFilename,
       );
+
+      await this.ffmpeg!.exec(args);
+
+      const data = await this.ffmpeg!.readFile(outputFilename);
+      return new Blob([data.buffer as ArrayBuffer], { type: "audio/wav" });
+    } finally {
+      this.removeProgressTracking();
+      await this.cleanupFiles([inputFilename, outputFilename]);
+    }
+  }
+
+  async hasAudioFilter(filterName: string): Promise<boolean> {
+    await this.load();
+    this.ensureLoaded();
+
+    const logs: string[] = [];
+    const logHandler = (data: { message?: string }) => {
+      if (data.message) logs.push(data.message);
+    };
+
+    this.ffmpeg!.on("log", logHandler);
+    try {
+      await this.ffmpeg!.exec(["-hide_banner", "-filters"]);
+    } finally {
+      this.ffmpeg!.off("log", logHandler);
+    }
+
+    const output = logs.join("\n");
+    return new RegExp(`(^|\\s)${filterName}(\\s|$)`).test(output);
+  }
+
+  async levelAudioWithDynaudnorm(
+    file: File | Blob,
+    options: AudioLevelingOptions = {},
+  ): Promise<Blob> {
+    await this.load();
+    this.ensureLoaded();
+
+    const suffix = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const inputFilename = `level-input-${suffix}`;
+    const outputFilename = `level-output-${suffix}.wav`;
+
+    try {
+      const inputData = await this.fileToUint8Array(file);
+      await this.ffmpeg!.writeFile(inputFilename, inputData);
+      this.setupProgressTracking(options.onProgress, options.duration);
+
+      const args: string[] = [];
+      if (
+        typeof options.startTime === "number" &&
+        Number.isFinite(options.startTime) &&
+        options.startTime > 0
+      ) {
+        args.push("-ss", options.startTime.toString());
+      }
+
+      args.push("-i", inputFilename);
+
+      if (
+        typeof options.duration === "number" &&
+        Number.isFinite(options.duration) &&
+        options.duration > 0
+      ) {
+        args.push("-t", options.duration.toString());
+      }
+
+      args.push("-map", `0:a:${options.audioTrackIndex ?? 0}`);
+      args.push("-vn");
+      args.push("-af", buildDynaudnormFilter(options.filterOptions));
+      args.push("-acodec", "pcm_f32le", "-ar", "48000", "-ac", "2");
+      args.push(outputFilename);
 
       await this.ffmpeg!.exec(args);
 
@@ -726,7 +880,10 @@ export class FFmpegFallback {
         ctx.fillRect(0, 0, width, height);
         ctx.drawImage(image, 0, 0, width, height);
 
-        const blob = await canvas.convertToBlob({ type: "image/jpeg", quality: 0.95 });
+        const blob = await canvas.convertToBlob({
+          type: "image/jpeg",
+          quality: 0.95,
+        });
         const arrayBuffer = await blob.arrayBuffer();
         const data = new Uint8Array(arrayBuffer);
 
@@ -741,7 +898,7 @@ export class FFmpegFallback {
         if (onProgress) {
           onProgress({
             phase: "rendering",
-            progress: frameCount / totalFrames * 0.7,
+            progress: (frameCount / totalFrames) * 0.7,
             currentFrame: frameCount,
             totalFrames,
             estimatedTimeRemaining: 0,
@@ -778,8 +935,10 @@ export class FFmpegFallback {
       }
 
       const ffmpegArgs = [
-        "-framerate", frameRate.toString(),
-        "-i", "frame_%06d.jpg",
+        "-framerate",
+        frameRate.toString(),
+        "-i",
+        "frame_%06d.jpg",
       ];
 
       if (hasAudio) {
@@ -790,36 +949,46 @@ export class FFmpegFallback {
 
       if (format === "mp4") {
         ffmpegArgs.push(
-          "-c:v", "libx264",
-          "-preset", "fast",
-          "-crf", "23",
-          "-maxrate", videoBitrate,
-          "-bufsize", this.calculateBufsize(videoBitrate),
-          "-pix_fmt", "yuv420p",
+          "-c:v",
+          "libx264",
+          "-preset",
+          "fast",
+          "-crf",
+          "23",
+          "-maxrate",
+          videoBitrate,
+          "-bufsize",
+          this.calculateBufsize(videoBitrate),
+          "-pix_fmt",
+          "yuv420p",
         );
       } else {
         ffmpegArgs.push(
-          "-c:v", "libvpx-vp9",
-          "-crf", "31",
-          "-b:v", "0",
-          "-deadline", "good",
-          "-cpu-used", "4",
-          "-row-mt", "1",
+          "-c:v",
+          "libvpx-vp9",
+          "-crf",
+          "31",
+          "-b:v",
+          "0",
+          "-deadline",
+          "good",
+          "-cpu-used",
+          "4",
+          "-row-mt",
+          "1",
         );
       }
 
       if (hasAudio) {
         ffmpegArgs.push(
-          "-c:a", format === "mp4" ? "aac" : "libopus",
-          "-b:a", audioBitrate,
+          "-c:a",
+          format === "mp4" ? "aac" : "libopus",
+          "-b:a",
+          audioBitrate,
         );
       }
 
-      ffmpegArgs.push(
-        "-movflags", "+faststart",
-        "-y",
-        outputFilename,
-      );
+      ffmpegArgs.push("-movflags", "+faststart", "-y", outputFilename);
 
       this.setupProgressTracking((progress) => {
         if (onProgress) {
@@ -857,7 +1026,11 @@ export class FFmpegFallback {
         const CHUNK_SIZE = 4 * 1024 * 1024;
         const buffer = outputData.buffer as ArrayBuffer;
         for (let offset = 0; offset < buffer.byteLength; offset += CHUNK_SIZE) {
-          const chunk = new Uint8Array(buffer, offset, Math.min(CHUNK_SIZE, buffer.byteLength - offset));
+          const chunk = new Uint8Array(
+            buffer,
+            offset,
+            Math.min(CHUNK_SIZE, buffer.byteLength - offset),
+          );
           await writableStream.write(chunk);
         }
         await writableStream.close();
@@ -943,7 +1116,10 @@ export class FFmpegFallback {
     for (let i = 0; i < buffer.length; i++) {
       for (let channel = 0; channel < numberOfChannels; channel++) {
         const sample = buffer.getChannelData(channel)[i];
-        const intSample = Math.max(-32768, Math.min(32767, Math.round(sample * 32767)));
+        const intSample = Math.max(
+          -32768,
+          Math.min(32767, Math.round(sample * 32767)),
+        );
         view.setInt16(offset, intSample, true);
         offset += bytesPerSample;
       }
@@ -1030,8 +1206,10 @@ export class FFmpegFallback {
           ffmpegArgs.push(
             "-filter_complex",
             `[0:v]${scaleFilter},setpts=${videoSpeed}*PTS[v];[0:a]atempo=${audioSpeed}[a]`,
-            "-map", "[v]",
-            "-map", "[a]"
+            "-map",
+            "[v]",
+            "-map",
+            "[a]",
           );
         } else {
           ffmpegArgs.push("-vf", scaleFilter);
@@ -1039,36 +1217,48 @@ export class FFmpegFallback {
 
         if (format === "mp4") {
           ffmpegArgs.push(
-            "-c:v", "libx264",
-            "-preset", "fast",
-            "-crf", "23",
-            "-maxrate", videoBitrate,
-            "-bufsize", this.calculateBufsize(videoBitrate),
-            "-pix_fmt", "yuv420p",
-            "-c:a", "aac",
-            "-b:a", audioBitrate,
+            "-c:v",
+            "libx264",
+            "-preset",
+            "fast",
+            "-crf",
+            "23",
+            "-maxrate",
+            videoBitrate,
+            "-bufsize",
+            this.calculateBufsize(videoBitrate),
+            "-pix_fmt",
+            "yuv420p",
+            "-c:a",
+            "aac",
+            "-b:a",
+            audioBitrate,
           );
         } else {
           ffmpegArgs.push(
-            "-c:v", "libvpx-vp9",
-            "-crf", "31",
-            "-b:v", "0",
-            "-deadline", "good",
-            "-cpu-used", "4",
-            "-row-mt", "1",
-            "-c:a", "libopus",
-            "-b:a", audioBitrate,
+            "-c:v",
+            "libvpx-vp9",
+            "-crf",
+            "31",
+            "-b:v",
+            "0",
+            "-deadline",
+            "good",
+            "-cpu-used",
+            "4",
+            "-row-mt",
+            "1",
+            "-c:a",
+            "libopus",
+            "-b:a",
+            audioBitrate,
           );
         }
       } else {
         ffmpegArgs.push("-c", "copy");
       }
 
-      ffmpegArgs.push(
-        "-movflags", "+faststart",
-        "-y",
-        outputFilename,
-      );
+      ffmpegArgs.push("-movflags", "+faststart", "-y", outputFilename);
 
       this.setupProgressTracking((progress) => {
         if (onProgress) {
@@ -1094,7 +1284,11 @@ export class FFmpegFallback {
         const CHUNK_SIZE = 4 * 1024 * 1024;
         const buffer = outputData.buffer as ArrayBuffer;
         for (let offset = 0; offset < buffer.byteLength; offset += CHUNK_SIZE) {
-          const chunk = new Uint8Array(buffer, offset, Math.min(CHUNK_SIZE, buffer.byteLength - offset));
+          const chunk = new Uint8Array(
+            buffer,
+            offset,
+            Math.min(CHUNK_SIZE, buffer.byteLength - offset),
+          );
           await writableStream.write(chunk);
         }
         await writableStream.close();
@@ -1127,8 +1321,12 @@ export class FFmpegFallback {
 
       return new Blob([outputData.buffer as ArrayBuffer], { type: mimeType });
     } finally {
-      try { await this.ffmpeg!.deleteFile(inputFilename); } catch {}
-      try { await this.ffmpeg!.deleteFile(outputFilename); } catch {}
+      try {
+        await this.ffmpeg!.deleteFile(inputFilename);
+      } catch {}
+      try {
+        await this.ffmpeg!.deleteFile(outputFilename);
+      } catch {}
     }
   }
 
@@ -1156,21 +1354,24 @@ export class FFmpegFallback {
 
     const outputName = `output.${ext}`;
     await this.ffmpeg!.exec([
-      "-f", "concat", "-safe", "0",
-      "-i", "concat_list.txt",
-      "-c", "copy",
+      "-f",
+      "concat",
+      "-safe",
+      "0",
+      "-i",
+      "concat_list.txt",
+      "-c",
+      "copy",
       outputName,
     ]);
 
     const outputData = await this.ffmpeg!.readFile(outputName);
     const mimeType = format === "webm" ? "video/webm" : "video/mp4";
-    const blob = new Blob([outputData.buffer as ArrayBuffer], { type: mimeType });
+    const blob = new Blob([outputData.buffer as ArrayBuffer], {
+      type: mimeType,
+    });
 
-    await this.cleanupFiles([
-      ...filenames,
-      "concat_list.txt",
-      outputName,
-    ]);
+    await this.cleanupFiles([...filenames, "concat_list.txt", outputName]);
 
     return blob;
   }
