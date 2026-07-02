@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { applySalesPitchTemplate } from "./StitchingTemplatesPanel";
 
 describe("applySalesPitchTemplate", () => {
-  it("appends video clips by actual media duration and keeps audio anchored to user clips", () => {
+  it("fits user video segments to their paired AI audio durations", () => {
     const project = createProject([
       createMedia("ai-opening", "opening.mp4", "video", 4.2),
       createMedia("user-first", "user-first.mp4", "video", 7.3),
@@ -35,20 +35,31 @@ describe("applySalesPitchTemplate", () => {
 
     const videoClips = videoTrack?.clips ?? [];
     expect(videoClips.map((clip) => clip.startTime)).toEqual([
-      0, 4.117, 11.417, 25.424, 31.524,
+      0, 4.117, 12.517, 26.524, 32.024,
     ]);
     expect(videoClips.map((clip) => clip.duration)).toEqual([
-      4.117, 7.3, 14.007, 6.1, 3.717,
+      4.117, 8.4, 14.007, 5.5, 3.717,
     ]);
     expect(videoClips.map((clip) => clip.outPoint)).toEqual([
       4.117, 7.3, 14.007, 6.1, 3.717,
     ]);
+    expect(videoClips.map((clip) => clip.speed ?? 1)).toEqual([
+      1, 0.869048, 1, 1.109091, 1,
+    ]);
     expect(videoClips.map((clip) => clip.volume)).toEqual([1, 0, 1, 0, 1]);
 
     const audioClips = audioTrack?.clips ?? [];
-    expect(audioClips.map((clip) => clip.startTime)).toEqual([4.117, 25.424]);
+    expect(audioClips.map((clip) => clip.startTime)).toEqual([4.117, 26.524]);
     expect(audioClips.map((clip) => clip.duration)).toEqual([8.4, 5.5]);
-    expect(nextProject.timeline.duration).toBe(35.241);
+    expect(
+      audioClips.map((clip) =>
+        Number((clip.startTime + clip.duration).toFixed(3)),
+      ),
+    ).toEqual([
+      Number((videoClips[1].startTime + videoClips[1].duration).toFixed(3)),
+      Number((videoClips[3].startTime + videoClips[3].duration).toFixed(3)),
+    ]);
+    expect(nextProject.timeline.duration).toBe(35.741);
   });
 
   it("can keep AI video tails when trimming is disabled", () => {
@@ -82,12 +93,15 @@ describe("applySalesPitchTemplate", () => {
     const videoClips = videoTrack?.clips ?? [];
 
     expect(videoClips.map((clip) => clip.startTime)).toEqual([
-      0, 4.2, 11.5, 25.59, 31.69,
+      0, 4.2, 12.6, 26.69, 32.19,
     ]);
     expect(videoClips.map((clip) => clip.duration)).toEqual([
+      4.2, 8.4, 14.09, 5.5, 3.8,
+    ]);
+    expect(videoClips.map((clip) => clip.outPoint)).toEqual([
       4.2, 7.3, 14.09, 6.1, 3.8,
     ]);
-    expect(nextProject.timeline.duration).toBe(35.49);
+    expect(nextProject.timeline.duration).toBe(35.99);
   });
 
   it("fits optional background music to the appended video duration", () => {
@@ -125,12 +139,12 @@ describe("applySalesPitchTemplate", () => {
       0, 10, 20, 30,
     ]);
     expect(bgmTrack?.clips.map((clip) => clip.duration)).toEqual([
-      10, 10, 10, 5.241,
+      10, 10, 10, 5.741,
     ]);
     expect(bgmTrack?.clips.map((clip) => clip.outPoint)).toEqual([
-      10, 10, 10, 5.241,
+      10, 10, 10, 5.741,
     ]);
-    expect(nextProject.timeline.duration).toBe(35.241);
+    expect(nextProject.timeline.duration).toBe(35.741);
   });
 });
 

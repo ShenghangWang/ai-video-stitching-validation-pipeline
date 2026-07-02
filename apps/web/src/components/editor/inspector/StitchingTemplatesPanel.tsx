@@ -29,6 +29,9 @@ interface TemplateSlot {
 interface ResolvedTemplateSlot extends TemplateSlot {
   resolvedStartTime: number;
   resolvedDuration: number;
+  resolvedOutPoint: number;
+  playbackSpeed?: number;
+  alignedAudioSlotId?: string;
 }
 
 interface SalesPitchTemplateOptions {
@@ -303,6 +306,7 @@ export const StitchingTemplatesPanel: React.FC = () => {
         "Stitching template applied",
         [
           "Video clips were appended",
+          "user videos were fitted to their matching AI audio",
           trimAiVideoTails ? "AI videos were trimmed by 2 frames" : null,
           backgroundMusicMediaId ? "BGM was fitted to the video length" : null,
           levelTimelineAudio ? "timeline volume leveling is starting" : null,
@@ -372,7 +376,8 @@ export const StitchingTemplatesPanel: React.FC = () => {
             <p className="mt-1 text-[11px] leading-relaxed text-text-muted">
               Car sales pitch template: 3 AI videos, 2 user videos, and 2 AI
               audio clips. Later these AI slots can be filled by API responses.
-              Applying the template appends video clips by actual duration.
+              User video segments are time-stretched to match their paired AI
+              narration audio.
             </p>
           </div>
         </div>
@@ -734,21 +739,53 @@ function resolveTemplateSlots(
   );
   const slotById = new Map(TEMPLATE_SLOTS.map((slot) => [slot.id, slot]));
   const resolvedById = new Map<string, ResolvedTemplateSlot>();
+  const audioDurationByAnchorSlotId = new Map<
+    string,
+    { audioSlotId: string; duration: number }
+  >();
+
+  for (const slot of TEMPLATE_SLOTS.filter(
+    (candidate) => candidate.type === "audio",
+  )) {
+    const anchorSlotId = AUDIO_SLOT_ANCHORS[slot.id];
+    if (!anchorSlotId) continue;
+
+    const mediaItem = mediaById.get(slotMediaIds[slot.id]);
+    const duration = getTemplateClipDuration(slot, mediaItem);
+    if (duration > 0) {
+      audioDurationByAnchorSlotId.set(anchorSlotId, {
+        audioSlotId: slot.id,
+        duration,
+      });
+    }
+  }
 
   let videoCursor = 0;
   for (const slotId of VIDEO_SLOT_SEQUENCE) {
     const slot = slotById.get(slotId);
     if (!slot) continue;
     const mediaItem = mediaById.get(slotMediaIds[slot.id]);
-    const duration = getTemplateClipDuration(slot, mediaItem, {
+    const sourceDuration = getTemplateClipDuration(slot, mediaItem, {
       frameRate: project.settings.frameRate,
       trimAiVideoTailFrames:
         options.trimAiVideoTailFrames ?? DEFAULT_AI_VIDEO_TAIL_TRIM_FRAMES,
     });
+    const matchedAudio = audioDurationByAnchorSlotId.get(slot.id);
+    const duration =
+      slot.source === "user" && matchedAudio
+        ? matchedAudio.duration
+        : sourceDuration;
+    const playbackSpeed =
+      slot.source === "user" && matchedAudio && duration > 0
+        ? roundSpeed(sourceDuration / duration)
+        : undefined;
     resolvedById.set(slot.id, {
       ...slot,
       resolvedStartTime: roundDuration(videoCursor),
       resolvedDuration: duration,
+      resolvedOutPoint: sourceDuration,
+      playbackSpeed,
+      alignedAudioSlotId: matchedAudio?.audioSlotId,
     });
     videoCursor = roundDuration(videoCursor + duration);
   }
@@ -761,10 +798,12 @@ function resolveTemplateSlots(
     const anchorSlot = anchorSlotId
       ? resolvedById.get(anchorSlotId)
       : undefined;
+    const duration = getTemplateClipDuration(slot, mediaItem);
     resolvedById.set(slot.id, {
       ...slot,
       resolvedStartTime: anchorSlot?.resolvedStartTime ?? slot.startTime,
-      resolvedDuration: getTemplateClipDuration(slot, mediaItem),
+      resolvedDuration: duration,
+      resolvedOutPoint: duration,
     });
   }
 
@@ -824,7 +863,7 @@ function createTemplateClip(
     startTime: slot.resolvedStartTime,
     duration: slot.resolvedDuration,
     inPoint: 0,
-    outPoint: slot.resolvedDuration,
+    outPoint: slot.resolvedOutPoint,
     effects: [],
     audioEffects: [],
     transform: {
@@ -836,6 +875,7 @@ function createTemplateClip(
       fitMode: "contain",
     },
     volume: slot.type === "video" && slot.source === "user" ? 0 : 1,
+    ...(slot.playbackSpeed !== undefined ? { speed: slot.playbackSpeed } : {}),
     keyframes: [],
     metadata: {
       stitchingTemplate: {
@@ -847,6 +887,9 @@ function createTemplateClip(
         plannedDuration: slot.duration,
         appliedStartTime: slot.resolvedStartTime,
         appliedDuration: slot.resolvedDuration,
+        sourceDuration: slot.resolvedOutPoint,
+        playbackSpeed: slot.playbackSpeed ?? 1,
+        alignedAudioSlotId: slot.alignedAudioSlotId,
       },
     },
   };
@@ -1129,4 +1172,8 @@ function formatSeconds(seconds: number): string {
 
 function roundDuration(seconds: number): number {
   return Number(seconds.toFixed(3));
+}
+
+function roundSpeed(speed: number): number {
+  return Number(speed.toFixed(6));
 }

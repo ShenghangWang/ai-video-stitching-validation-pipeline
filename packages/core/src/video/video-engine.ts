@@ -66,6 +66,28 @@ export interface FrameRenderOptions {
   shapeClips?: ShapeClip[];
 }
 
+function getClipSourceTime(clip: Clip, timelineTime: number): number {
+  const speedEngine = getSpeedEngine();
+  const sourceDuration = Math.max(0, clip.outPoint - clip.inPoint);
+  if (sourceDuration > 0) {
+    const speed =
+      typeof clip.speed === "number" && Number.isFinite(clip.speed)
+        ? clip.speed
+        : 1;
+    speedEngine.setClipSpeed(clip.id, speed, sourceDuration);
+  }
+
+  const localTime = Math.max(0, timelineTime - clip.startTime);
+  return Math.max(
+    clip.inPoint,
+    Math.min(
+      clip.outPoint,
+      clip.inPoint +
+        speedEngine.getSourceTimeAtPlaybackTime(clip.id, localTime),
+    ),
+  );
+}
+
 /**
  * VideoEngine handles video frame rendering and composition.
  * Supports GPU acceleration, parallel decoding, frame caching, and effects.
@@ -1411,15 +1433,7 @@ export class VideoEngine {
       }
     }
 
-    const speedEngine = getSpeedEngine();
-    const localTime = time - clip.startTime;
-    const sourceTime = Math.max(
-      clip.inPoint,
-      Math.min(
-        clip.outPoint,
-        clip.inPoint + speedEngine.getSourceTimeAtPlaybackTime(clip.id, localTime),
-      ),
-    );
+    const sourceTime = getClipSourceTime(clip, time);
 
     let bitmap = await this.decodeFrameWithMediaBunny(
       mediaItem.blob,
@@ -1508,11 +1522,7 @@ export class VideoEngine {
 
   private createClipRenderInfo(clip: Clip, time: number): VideoClipRenderInfo {
     const clipLocalTime = time - clip.startTime;
-
-    const speedEngine = getSpeedEngine();
-    const sourceTime =
-      clip.inPoint +
-      speedEngine.getSourceTimeAtPlaybackTime(clip.id, clipLocalTime);
+    const sourceTime = getClipSourceTime(clip, time);
 
     const animatedTransform = this.getAnimatedTransform(clip, clipLocalTime);
     const animatedEffects = this.getAnimatedEffects(clip, clipLocalTime);

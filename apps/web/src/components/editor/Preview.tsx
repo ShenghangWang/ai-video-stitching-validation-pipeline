@@ -837,6 +837,25 @@ export const Preview: React.FC = () => {
     timelineTracksRef.current = timelineTracks;
   }, [timelineTracks]);
 
+  useEffect(() => {
+    const speedEngine = getSpeedEngine();
+    for (const track of timelineTracks) {
+      for (const clip of track.clips) {
+        const speed =
+          typeof clip.speed === "number" && Number.isFinite(clip.speed)
+            ? clip.speed
+            : 1;
+        const sourceDuration = Math.max(
+          0,
+          (clip.outPoint || 0) - (clip.inPoint || 0),
+        );
+        if (sourceDuration > 0) {
+          speedEngine.setClipSpeed(clip.id, speed, sourceDuration);
+        }
+      }
+    }
+  }, [timelineTracks]);
+
   // Keep a ref to allTextClips for use in playback effect
   const allTextClipsRef = useRef(allTextClips);
   useEffect(() => {
